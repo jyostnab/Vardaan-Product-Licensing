@@ -1,12 +1,54 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LicenseDashboard } from "@/components/LicenseDashboard";
+import { LicenseLoginDemo } from "@/components/LicenseLoginDemo";
+import { Shield, Terminal } from "lucide-react";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState("dashboard");
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground shadow-md">
+        <div className="container py-4 flex items-center">
+          <Shield className="h-8 w-8 mr-2" />
+          <div>
+            <h1 className="text-2xl font-bold">License Guardian Shield</h1>
+            <p className="text-xs opacity-80">
+              Enterprise Software License Management
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main className="container py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="dashboard" className="text-base py-3">
+              <Shield className="h-4 w-4 mr-2" />
+              License Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="demo" className="text-base py-3">
+              <Terminal className="h-4 w-4 mr-2" />
+              Login Demo
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="dashboard">
+            <LicenseDashboard />
+          </TabsContent>
+          <TabsContent value="demo">
+            <LicenseLoginDemo />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      <footer className="bg-muted py-4 mt-8">
+        <div className="container text-center text-sm text-muted-foreground">
+          <p>License Guardian Shield &copy; {new Date().getFullYear()}</p>
+          <p className="text-xs mt-1">Secure license management for enterprise software</p>
+        </div>
+      </footer>
     </div>
   );
 };
