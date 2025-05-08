@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from "react";
-import { getAllLicensesWithCustomers, mockLicenses } from "@/data/mockLicenses";
 import { License } from "@/types/license";
 import { LicenseCard } from "./LicenseCard";
 import { LicenseVerificationModal } from "./LicenseVerificationModal";
@@ -9,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, RefreshCw } from "lucide-react";
+import { useData } from "@/context/DataContext";
 
 export function LicenseDashboard() {
-  const [licenses, setLicenses] = useState<License[]>([]);
+  const { licenses, customers } = useData();
   const [filteredLicenses, setFilteredLicenses] = useState<License[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,29 +20,20 @@ export function LicenseDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading data from a backend
-    const loadLicenses = async () => {
-      setIsLoading(true);
-      try {
-        // Wait a bit to simulate network request
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Get all licenses with customer data
-        const loadedLicenses = getAllLicensesWithCustomers();
-        setLicenses(loadedLicenses);
-        setFilteredLicenses(loadedLicenses);
-      } catch (error) {
-        console.error("Error loading licenses:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadLicenses();
+    // Simulate short loading for UI feedback
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
   }, []);
 
+  // Process licenses to include customer data
+  const licensesWithCustomer = licenses.map(license => {
+    const customer = customers.find(c => c.id === license.customerId);
+    return { ...license, customer };
+  });
+
   useEffect(() => {
-    let filtered = licenses;
+    let filtered = licensesWithCustomer;
     
     // Apply search filter
     if (searchQuery) {
@@ -50,7 +41,8 @@ export function LicenseDashboard() {
       filtered = filtered.filter(license => 
         license.id.toLowerCase().includes(query) ||
         license.customer?.name.toLowerCase().includes(query) ||
-        license.customer?.email.toLowerCase().includes(query)
+        license.customer?.email?.toLowerCase().includes(query) ||
+        license.customer?.location?.toLowerCase().includes(query)
       );
     }
     
@@ -60,7 +52,7 @@ export function LicenseDashboard() {
     }
     
     setFilteredLicenses(filtered);
-  }, [licenses, activeTab, searchQuery]);
+  }, [licenses, customers, activeTab, searchQuery]);
 
   const handleLicenseClick = (license: License) => {
     setSelectedLicense(license);
@@ -74,11 +66,10 @@ export function LicenseDashboard() {
 
   const handleRefresh = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const loadedLicenses = getAllLicensesWithCustomers();
-    setLicenses(loadedLicenses);
-    setFilteredLicenses(loadedLicenses);
-    setIsLoading(false);
+    // In a real app, you would refetch data from the database here
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
   };
 
   return (
@@ -95,7 +86,7 @@ export function LicenseDashboard() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => window.document.getElementById("create-tab")?.click()}>
             <Plus className="h-4 w-4 mr-2" />
             Create License
           </Button>
@@ -166,6 +157,14 @@ export function LicenseDashboard() {
                   ? `No licenses match "${searchQuery}". Try a different search term.` 
                   : "No licenses found for the selected filter."}
               </p>
+              {licenses.length === 0 && (
+                <Button 
+                  className="mt-4" 
+                  onClick={() => window.document.getElementById("create-tab")?.click()}
+                >
+                  Create Your First License
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>

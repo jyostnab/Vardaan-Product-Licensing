@@ -36,7 +36,7 @@ const Index = () => {
               <Package className="h-4 w-4 mr-2" />
               Products
             </TabsTrigger>
-            <TabsTrigger value="create" className="text-base py-3">
+            <TabsTrigger value="create" className="text-base py-3" id="create-tab">
               <FileText className="h-4 w-4 mr-2" />
               Create License
             </TabsTrigger>

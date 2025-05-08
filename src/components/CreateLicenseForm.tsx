@@ -18,12 +18,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Calendar as CalendarIcon, Check, X, Plus, Trash } from "lucide-react";
-import { getAllProducts, getVersionsByProductId } from "@/data/mockProducts";
-import { mockCustomers } from "@/data/mockLicenses";
-import { License, LicenseType, LicenseScope, Product, ProductVersion, Customer } from "@/types/license";
+import { CustomerForm } from "./CustomerForm";
+import { useData } from "@/context/DataContext";
+import { License, LicenseType, LicenseScope } from "@/types/license";
 
 const licenseFormSchema = z.object({
   customerId: z.string().min(1, { message: "Customer is required" }),
@@ -44,13 +43,12 @@ const licenseFormSchema = z.object({
 });
 
 export function CreateLicenseForm() {
+  const { customers, products, addLicense } = useData();
   const [isDateBased, setIsDateBased] = useState(false);
   const [isUserCountBased, setIsUserCountBased] = useState(false);
   const [isMacBased, setIsMacBased] = useState(false);
   const [isCountryBased, setIsCountryBased] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productVersions, setProductVersions] = useState<ProductVersion[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [productVersions, setProductVersions] = useState<any[]>([]);
   const [macAddresses, setMacAddresses] = useState<string[]>([]);
   const [newMacAddress, setNewMacAddress] = useState("");
   const [allowedCountries, setAllowedCountries] = useState<string[]>([]);
@@ -70,19 +68,14 @@ export function CreateLicenseForm() {
     }
   });
   
-  useEffect(() => {
-    // Load products
-    const loadedProducts = getAllProducts();
-    setProducts(loadedProducts);
-    
-    // Load customers
-    setCustomers(mockCustomers);
-  }, []);
-  
   // When product selection changes, load its versions
   const handleProductChange = (productId: string) => {
-    const versions = getVersionsByProductId(productId);
-    setProductVersions(versions);
+    const selectedProduct = products.find(p => p.id === productId);
+    if (selectedProduct && selectedProduct.versions) {
+      setProductVersions(selectedProduct.versions);
+    } else {
+      setProductVersions([]);
+    }
     form.setValue("productVersionId", "");
   };
   
@@ -143,14 +136,37 @@ export function CreateLicenseForm() {
       licenseType = "country_based";
     }
     
-    // In a real app, this would send the data to an API
-    console.log("Creating license with data:", {
-      ...data,
+    const license: Omit<License, "id" | "createdAt" | "updatedAt"> = {
+      customerId: data.customerId,
+      productId: data.productId,
+      productVersionId: data.productVersionId,
       licenseType,
-      macAddresses: macAddresses.length > 0 ? macAddresses : undefined,
-      allowedCountries: allowedCountries.length > 0 ? allowedCountries : undefined,
-      expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
-    });
+      licenseScope: data.licenseScope as LicenseScope,
+      licensingPeriod: data.licensingPeriod,
+      renewableAlertMessage: data.renewableAlertMessage,
+      gracePeriodDays: data.gracePeriodDays,
+    };
+
+    // Add optional fields based on license type
+    if (isDateBased && data.expiryDate) {
+      license.expiryDate = new Date(data.expiryDate);
+    }
+    
+    if (isUserCountBased) {
+      license.maxUsersAllowed = data.maxUsersAllowed;
+      license.currentUsers = data.currentUsers;
+    }
+    
+    if (isMacBased && macAddresses.length > 0) {
+      license.macAddresses = macAddresses;
+    }
+    
+    if (isCountryBased && allowedCountries.length > 0) {
+      license.allowedCountries = allowedCountries;
+    }
+    
+    // Add license
+    addLicense(license);
     
     toast({
       title: "License created successfully",
@@ -180,33 +196,38 @@ export function CreateLicenseForm() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Customer Selection */}
-              <FormField
-                control={form.control}
-                name="customerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select customer" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {customers.map(customer => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <FormField
+                  control={form.control}
+                  name="customerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <div className="flex gap-2 items-center">
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select customer" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {customers.map(customer => (
+                              <SelectItem key={customer.id} value={customer.id}>
+                                {customer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <CustomerForm onSuccess={() => form.setValue("customerId", "")} />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               
               {/* Product Selection */}
               <FormField
@@ -220,7 +241,7 @@ export function CreateLicenseForm() {
                         field.onChange(value);
                         handleProductChange(value);
                       }} 
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -249,7 +270,7 @@ export function CreateLicenseForm() {
                     <FormLabel>Product Version</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                      value={field.value}
                       disabled={productVersions.length === 0}
                     >
                       <FormControl>
@@ -284,7 +305,7 @@ export function CreateLicenseForm() {
                     <FormLabel>License Scope</FormLabel>
                     <Select 
                       onValueChange={field.onChange as (value: string) => void} 
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
