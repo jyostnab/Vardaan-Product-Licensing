@@ -3,6 +3,25 @@ export type LicenseType = 'date_based' | 'user_count_based' | 'mac_based' | 'cou
 
 export type LicenseScope = 'international' | 'local';
 
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  versions: ProductVersion[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProductVersion {
+  id: string;
+  productId: string;
+  version: string;
+  releaseDate: Date;
+  notes: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -19,6 +38,8 @@ export interface License {
   id: string;
   customerId: string;
   customer?: Customer;
+  productId: string;
+  productVersionId: string;
   licenseType: LicenseType;
   licenseScope: LicenseScope;
   licensingPeriod: number; // in days

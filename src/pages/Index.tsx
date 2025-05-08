@@ -3,7 +3,9 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LicenseDashboard } from "@/components/LicenseDashboard";
 import { LicenseLoginDemo } from "@/components/LicenseLoginDemo";
-import { Shield, Terminal } from "lucide-react";
+import { ProductsTab } from "@/components/ProductsTab";
+import { CreateLicenseForm } from "@/components/CreateLicenseForm";
+import { Shield, Terminal, Package, FileText } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -24,10 +26,18 @@ const Index = () => {
 
       <main className="container py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="dashboard" className="text-base py-3">
               <Shield className="h-4 w-4 mr-2" />
-              License Dashboard
+              Licenses
+            </TabsTrigger>
+            <TabsTrigger value="products" className="text-base py-3">
+              <Package className="h-4 w-4 mr-2" />
+              Products
+            </TabsTrigger>
+            <TabsTrigger value="create" className="text-base py-3">
+              <FileText className="h-4 w-4 mr-2" />
+              Create License
             </TabsTrigger>
             <TabsTrigger value="demo" className="text-base py-3">
               <Terminal className="h-4 w-4 mr-2" />
@@ -36,6 +46,12 @@ const Index = () => {
           </TabsList>
           <TabsContent value="dashboard">
             <LicenseDashboard />
+          </TabsContent>
+          <TabsContent value="products">
+            <ProductsTab />
+          </TabsContent>
+          <TabsContent value="create">
+            <CreateLicenseForm />
           </TabsContent>
           <TabsContent value="demo">
             <LicenseLoginDemo />
