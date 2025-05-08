@@ -5,7 +5,8 @@ import { LicenseDashboard } from "@/components/LicenseDashboard";
 import { LicenseLoginDemo } from "@/components/LicenseLoginDemo";
 import { ProductsTab } from "@/components/ProductsTab";
 import { CreateLicenseForm } from "@/components/CreateLicenseForm";
-import { Shield, Terminal, Package, FileText } from "lucide-react";
+import { DatabaseSchemaGuide } from "@/components/DatabaseSchemaGuide";
+import { Shield, Terminal, Package, FileText, Database } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -26,7 +27,7 @@ const Index = () => {
 
       <main className="container py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="dashboard" className="text-base py-3">
               <Shield className="h-4 w-4 mr-2" />
               Licenses
@@ -43,6 +44,10 @@ const Index = () => {
               <Terminal className="h-4 w-4 mr-2" />
               Login Demo
             </TabsTrigger>
+            <TabsTrigger value="database" className="text-base py-3">
+              <Database className="h-4 w-4 mr-2" />
+              Database
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard">
             <LicenseDashboard />
@@ -55,6 +60,9 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="demo">
             <LicenseLoginDemo />
+          </TabsContent>
+          <TabsContent value="database">
+            <DatabaseSchemaGuide />
           </TabsContent>
         </Tabs>
       </main>

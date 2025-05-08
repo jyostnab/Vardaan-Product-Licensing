@@ -55,6 +55,8 @@ export const mockLicenses: License[] = [
   {
     id: "l1",
     customerId: "c1",
+    productId: "p1",
+    productVersionId: "v2",
     licenseType: "date_based",
     licenseScope: "international",
     licensingPeriod: 365,
@@ -68,6 +70,8 @@ export const mockLicenses: License[] = [
   {
     id: "l2",
     customerId: "c1",
+    productId: "p1",
+    productVersionId: "v1",
     licenseType: "date_based",
     licenseScope: "international",
     licensingPeriod: 365,
@@ -81,6 +85,8 @@ export const mockLicenses: License[] = [
   {
     id: "l3",
     customerId: "c2",
+    productId: "p2",
+    productVersionId: "v3",
     licenseType: "date_based",
     licenseScope: "local",
     licensingPeriod: 180,
@@ -94,6 +100,8 @@ export const mockLicenses: License[] = [
   {
     id: "l4",
     customerId: "c2",
+    productId: "p1",
+    productVersionId: "v2",
     licenseType: "user_count_based",
     licenseScope: "international",
     licensingPeriod: 365,
@@ -108,6 +116,8 @@ export const mockLicenses: License[] = [
   {
     id: "l5",
     customerId: "c3",
+    productId: "p2",
+    productVersionId: "v4",
     licenseType: "mac_based",
     licenseScope: "local",
     licensingPeriod: 365,
@@ -121,6 +131,8 @@ export const mockLicenses: License[] = [
   {
     id: "l6",
     customerId: "c3",
+    productId: "p2",
+    productVersionId: "v3",
     licenseType: "country_based",
     licenseScope: "international",
     licensingPeriod: 365,
@@ -134,6 +146,8 @@ export const mockLicenses: License[] = [
   {
     id: "l7",
     customerId: "c1",
+    productId: "p1",
+    productVersionId: "v2",
     licenseType: "mixed",
     licenseScope: "international",
     licensingPeriod: 365,
