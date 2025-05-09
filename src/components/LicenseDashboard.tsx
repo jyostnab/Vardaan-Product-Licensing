@@ -9,26 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, RefreshCw } from "lucide-react";
 import { useData } from "@/context/DataContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function LicenseDashboard() {
-  const { licenses, customers } = useData();
+  const { licenses, customers, isLoading, refreshData } = useData();
   const [filteredLicenses, setFilteredLicenses] = useState<License[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate short loading for UI feedback
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Process licenses to include customer data
   const licensesWithCustomer = licenses.map(license => {
-    const customer = customers.find(c => c.id === license.customerId);
+    const customer = customers.find(c => c.id === license.customerId) || license.customer;
     return { ...license, customer };
   });
 
@@ -52,7 +46,7 @@ export function LicenseDashboard() {
     }
     
     setFilteredLicenses(filtered);
-  }, [licenses, customers, activeTab, searchQuery]);
+  }, [licenses, customers, activeTab, searchQuery, licensesWithCustomer]);
 
   const handleLicenseClick = (license: License) => {
     setSelectedLicense(license);
@@ -65,11 +59,57 @@ export function LicenseDashboard() {
   };
 
   const handleRefresh = async () => {
-    setIsLoading(true);
-    // In a real app, you would refetch data from the database here
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
+    setRefreshing(true);
+    await refreshData();
+    setRefreshing(false);
+  };
+
+  const renderLicenseGrid = () => {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, index) => (
+            <Skeleton key={index} className="h-[200px] w-full" />
+          ))}
+        </div>
+      );
+    }
+    
+    if (filteredLicenses.length > 0) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLicenses.map((license) => (
+            <LicenseCard 
+              key={license.id} 
+              license={license} 
+              onClick={() => handleLicenseClick(license)}
+            />
+          ))}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="rounded-full bg-muted p-4 mb-4">
+          <Search className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <h3 className="font-medium text-lg">No licenses found</h3>
+        <p className="text-muted-foreground max-w-sm mt-1">
+          {searchQuery 
+            ? `No licenses match "${searchQuery}". Try a different search term.` 
+            : "No licenses found for the selected filter."}
+        </p>
+        {licenses.length === 0 && (
+          <Button 
+            className="mt-4" 
+            onClick={() => window.document.getElementById("create-tab")?.click()}
+          >
+            Create Your First License
+          </Button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -82,11 +122,20 @@ export function LicenseDashboard() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={isLoading || refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button size="sm" onClick={() => window.document.getElementById("create-tab")?.click()}>
+          <Button 
+            size="sm" 
+            onClick={() => window.document.getElementById("create-tab")?.click()}
+            disabled={isLoading}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create License
           </Button>
@@ -120,53 +169,13 @@ export function LicenseDashboard() {
               className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isLoading}
             />
           </div>
         </div>
 
         <TabsContent value={activeTab} className="mt-0">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="bg-card border rounded-lg p-6 h-[200px] animate-pulse">
-                  <div className="h-5 bg-muted rounded w-2/3 mb-4"></div>
-                  <div className="h-4 bg-muted rounded w-1/3 mb-6"></div>
-                  <div className="h-4 bg-muted rounded w-full mb-3"></div>
-                  <div className="h-4 bg-muted rounded w-4/5"></div>
-                </div>
-              ))}
-            </div>
-          ) : filteredLicenses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredLicenses.map((license) => (
-                <LicenseCard 
-                  key={license.id} 
-                  license={license} 
-                  onClick={() => handleLicenseClick(license)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-muted p-4 mb-4">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-lg">No licenses found</h3>
-              <p className="text-muted-foreground max-w-sm mt-1">
-                {searchQuery 
-                  ? `No licenses match "${searchQuery}". Try a different search term.` 
-                  : "No licenses found for the selected filter."}
-              </p>
-              {licenses.length === 0 && (
-                <Button 
-                  className="mt-4" 
-                  onClick={() => window.document.getElementById("create-tab")?.click()}
-                >
-                  Create Your First License
-                </Button>
-              )}
-            </div>
-          )}
+          {renderLicenseGrid()}
         </TabsContent>
       </Tabs>
 

@@ -9,6 +9,217 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customers: {
+        Row: {
+          contact: string | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          location: string | null
+          mobile: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact?: string | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          location?: string | null
+          mobile?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact?: string | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          location?: string | null
+          mobile?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      license_allowed_countries: {
+        Row: {
+          country_code: string
+          created_at: string | null
+          id: string
+          license_id: string
+        }
+        Insert: {
+          country_code: string
+          created_at?: string | null
+          id?: string
+          license_id: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string | null
+          id?: string
+          license_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_allowed_countries_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_mac_addresses: {
+        Row: {
+          created_at: string | null
+          id: string
+          license_id: string
+          mac_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          license_id: string
+          mac_address: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          license_id?: string
+          mac_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_mac_addresses_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_verification_logs: {
+        Row: {
+          country_code: string | null
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          is_valid: boolean
+          license_id: string
+          mac_address: string | null
+          message: string | null
+          verification_date: string | null
+        }
+        Insert: {
+          country_code?: string | null
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          is_valid: boolean
+          license_id: string
+          mac_address?: string | null
+          message?: string | null
+          verification_date?: string | null
+        }
+        Update: {
+          country_code?: string | null
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          license_id?: string
+          mac_address?: string | null
+          message?: string | null
+          verification_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_verification_logs_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      licenses: {
+        Row: {
+          created_at: string | null
+          current_users: number | null
+          customer_id: string
+          expiry_date: string | null
+          grace_period_days: number
+          id: string
+          license_scope: string
+          license_type: string
+          licensing_period: number
+          max_users_allowed: number | null
+          product_id: string
+          product_version_id: string
+          renewable_alert_message: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_users?: number | null
+          customer_id: string
+          expiry_date?: string | null
+          grace_period_days?: number
+          id?: string
+          license_scope?: string
+          license_type: string
+          licensing_period: number
+          max_users_allowed?: number | null
+          product_id: string
+          product_version_id: string
+          renewable_alert_message?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_users?: number | null
+          customer_id?: string
+          expiry_date?: string | null
+          grace_period_days?: number
+          id?: string
+          license_scope?: string
+          license_type?: string
+          licensing_period?: number
+          max_users_allowed?: number | null
+          product_id?: string
+          product_version_id?: string
+          renewable_alert_message?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "licenses_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "licenses_product_version_id_fkey"
+            columns: ["product_version_id"]
+            isOneToOne: false
+            referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Product: {
         Row: {
           created_at: string
@@ -27,6 +238,68 @@ export type Database = {
           id?: number
           "Product Name"?: string | null
           "Product Version"?: string | null
+        }
+        Relationships: []
+      }
+      product_versions: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          release_date: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          release_date: string
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          release_date?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_versions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
