@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import * as React from "react";
 import { Customer, License, Product, ProductVersion } from "@/types/license";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -26,17 +26,17 @@ type DataContextType = {
   refreshData: () => Promise<void>;
 };
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+const DataContext = React.createContext<DataContextType | undefined>(undefined);
 
-export function DataProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productVersions, setProductVersions] = useState<ProductVersion[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [licenses, setLicenses] = useState<License[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [productVersions, setProductVersions] = React.useState<ProductVersion[]>([]);
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
+  const [licenses, setLicenses] = React.useState<License[]>([]);
+  const [isLoading, setIsLoading] = React.useState<boolean>(true);
 
   // Load data from Supabase when the component mounts
-  useEffect(() => {
+  React.useEffect(() => {
     loadData();
   }, []);
 
@@ -184,7 +184,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 }
 
 export const useData = () => {
-  const context = useContext(DataContext);
+  const context = React.useContext(DataContext);
   if (context === undefined) {
     throw new Error("useData must be used within a DataProvider");
   }

@@ -13,7 +13,14 @@ export const fetchProducts = async (): Promise<Product[]> => {
     throw error;
   }
   
-  return data || [];
+  return data.map(product => ({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    versions: [],
+    createdAt: new Date(product.created_at),
+    updatedAt: new Date(product.updated_at)
+  })) || [];
 };
 
 export const createProduct = async (product: Omit<Product, "id" | "createdAt" | "updatedAt" | "versions">): Promise<Product> => {
@@ -32,8 +39,12 @@ export const createProduct = async (product: Omit<Product, "id" | "createdAt" | 
   }
   
   return {
-    ...data,
-    versions: []
+    id: data.id,
+    name: data.name, 
+    description: data.description,
+    versions: [],
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
   };
 };
 
@@ -49,8 +60,13 @@ export const fetchProductVersions = async (): Promise<ProductVersion[]> => {
   }
   
   return data.map(version => ({
-    ...version,
+    id: version.id,
+    productId: version.product_id,
+    version: version.version,
     releaseDate: new Date(version.release_date),
+    notes: version.notes,
+    createdAt: new Date(version.created_at),
+    updatedAt: new Date(version.updated_at)
   })) || [];
 };
 
@@ -60,7 +76,7 @@ export const createProductVersion = async (version: Omit<ProductVersion, "id" | 
     .insert({
       product_id: version.productId,
       version: version.version,
-      release_date: version.releaseDate,
+      release_date: version.releaseDate.toISOString().split('T')[0],
       notes: version.notes
     })
     .select()
@@ -72,9 +88,13 @@ export const createProductVersion = async (version: Omit<ProductVersion, "id" | 
   }
   
   return {
-    ...data,
+    id: data.id,
+    productId: data.product_id,
+    version: data.version,
     releaseDate: new Date(data.release_date),
-    productId: data.product_id
+    notes: data.notes,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
   };
 };
 
@@ -89,7 +109,17 @@ export const fetchCustomers = async (): Promise<Customer[]> => {
     throw error;
   }
   
-  return data || [];
+  return data.map(customer => ({
+    id: customer.id,
+    name: customer.name,
+    location: customer.location,
+    country: customer.country,
+    contact: customer.contact,
+    mobile: customer.mobile,
+    email: customer.email,
+    createdAt: new Date(customer.created_at),
+    updatedAt: new Date(customer.updated_at)
+  })) || [];
 };
 
 export const createCustomer = async (customer: Omit<Customer, "id" | "createdAt" | "updatedAt">): Promise<Customer> => {
@@ -111,7 +141,17 @@ export const createCustomer = async (customer: Omit<Customer, "id" | "createdAt"
     throw error;
   }
   
-  return data;
+  return {
+    id: data.id,
+    name: data.name,
+    location: data.location,
+    country: data.country,
+    contact: data.contact,
+    mobile: data.mobile,
+    email: data.email,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
+  };
 };
 
 // License Services
@@ -132,14 +172,24 @@ export const fetchLicenses = async (): Promise<License[]> => {
     // Handle converting database fields to match our type structure
     const { customers, product_id, product_version_id, customer_id, license_type, license_scope, 
             licensing_period, renewable_alert_message, grace_period_days, expiry_date, 
-            max_users_allowed, current_users, ...rest } = license;
+            max_users_allowed, current_users, created_at, updated_at, ...rest } = license;
     
     return {
       ...rest,
       productId: product_id,
       productVersionId: product_version_id,
       customerId: customer_id,
-      customer: customers,
+      customer: customers ? {
+        id: customers.id,
+        name: customers.name,
+        location: customers.location,
+        country: customers.country,
+        contact: customers.contact,
+        mobile: customers.mobile,
+        email: customers.email,
+        createdAt: new Date(customers.created_at),
+        updatedAt: new Date(customers.updated_at)
+      } : undefined,
       licenseType: license_type as any,
       licenseScope: license_scope as any,
       licensingPeriod: licensing_period,
@@ -147,7 +197,9 @@ export const fetchLicenses = async (): Promise<License[]> => {
       gracePeriodDays: grace_period_days,
       expiryDate: expiry_date ? new Date(expiry_date) : undefined,
       maxUsersAllowed: max_users_allowed,
-      currentUsers: current_users
+      currentUsers: current_users,
+      createdAt: new Date(created_at),
+      updatedAt: new Date(updated_at)
     };
   }) || [];
 };
@@ -165,7 +217,7 @@ export const createLicense = async (license: Omit<License, "id" | "createdAt" | 
       licensing_period: license.licensingPeriod,
       renewable_alert_message: license.renewableAlertMessage,
       grace_period_days: license.gracePeriodDays,
-      expiry_date: license.expiryDate,
+      expiry_date: license.expiryDate ? license.expiryDate.toISOString().split('T')[0] : null,
       max_users_allowed: license.maxUsersAllowed,
       current_users: license.currentUsers || 0
     })
@@ -227,14 +279,24 @@ export const createLicense = async (license: Omit<License, "id" | "createdAt" | 
   // Convert to our type structure
   const { customers, product_id, product_version_id, customer_id, license_type, license_scope, 
           licensing_period, renewable_alert_message, grace_period_days, expiry_date, 
-          max_users_allowed, current_users, ...rest } = fullLicense;
+          max_users_allowed, current_users, created_at, updated_at, ...rest } = fullLicense;
   
   return {
     ...rest,
     productId: product_id,
     productVersionId: product_version_id,
     customerId: customer_id,
-    customer: customers,
+    customer: customers ? {
+      id: customers.id,
+      name: customers.name,
+      location: customers.location,
+      country: customers.country,
+      contact: customers.contact,
+      mobile: customers.mobile,
+      email: customers.email,
+      createdAt: new Date(customers.created_at),
+      updatedAt: new Date(customers.updated_at)
+    } : undefined,
     licenseType: license_type as any,
     licenseScope: license_scope as any,
     licensingPeriod: licensing_period,
@@ -244,7 +306,9 @@ export const createLicense = async (license: Omit<License, "id" | "createdAt" | 
     maxUsersAllowed: max_users_allowed,
     currentUsers: current_users,
     macAddresses: license.macAddresses,
-    allowedCountries: license.allowedCountries
+    allowedCountries: license.allowedCountries,
+    createdAt: new Date(created_at),
+    updatedAt: new Date(updated_at)
   };
 };
 
