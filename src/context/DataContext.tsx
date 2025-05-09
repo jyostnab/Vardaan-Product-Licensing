@@ -1,12 +1,12 @@
 
-import * as React from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Customer, License, Product, ProductVersion } from "@/types/license";
 import { toast } from "@/hooks/use-toast";
 import { 
-  fetchProducts, createProduct, updateProduct, deleteProduct,
-  fetchProductVersions, createProductVersion, updateProductVersion, deleteProductVersion,
-  fetchCustomers, createCustomer, updateCustomer, deleteCustomer,
-  fetchLicenses, createLicense, updateLicense, deleteLicense
+  fetchProducts, createProduct, updateProduct as updateProductApi, deleteProduct,
+  fetchProductVersions, createProductVersion, updateProductVersion as updateProductVersionApi, deleteProductVersion,
+  fetchCustomers, createCustomer, updateCustomer as updateCustomerApi, deleteCustomer,
+  fetchLicenses, createLicense, updateLicense as updateLicenseApi, deleteLicense
 } from "@/services/databaseService";
 
 type DataContextType = {
@@ -43,17 +43,17 @@ type DataContextType = {
   refreshData: () => Promise<void>;
 };
 
-const DataContext = React.createContext<DataContextType | undefined>(undefined);
+const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = React.useState<Product[]>([]);
-  const [productVersions, setProductVersions] = React.useState<ProductVersion[]>([]);
-  const [customers, setCustomers] = React.useState<Customer[]>([]);
-  const [licenses, setLicenses] = React.useState<License[]>([]);
-  const [isLoading, setIsLoading] = React.useState<boolean>(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productVersions, setProductVersions] = useState<ProductVersion[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Load data from Supabase when the component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -117,9 +117,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateProductImpl = async (id: string, product: Partial<Product>) => {
+  const updateProduct = async (id: string, product: Partial<Product>) => {
     try {
-      const updatedProduct = await updateProduct(id, product);
+      const updatedProduct = await updateProductApi(id, product);
       
       setProducts(prev => 
         prev.map(p => p.id === id ? { ...p, ...updatedProduct, versions: p.versions } : p)
@@ -187,7 +187,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateProductVersion = async (id: string, version: Partial<ProductVersion>) => {
     try {
-      const updatedVersion = await updateProductVersion(id, version);
+      const updatedVersion = await updateProductVersionApi(id, version);
       
       setProductVersions(prev => 
         prev.map(v => v.id === id ? { ...v, ...updatedVersion } : v)
@@ -274,7 +274,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateCustomer = async (id: string, customer: Partial<Customer>) => {
     try {
-      const updatedCustomer = await updateCustomer(id, customer);
+      const updatedCustomer = await updateCustomerApi(id, customer);
       setCustomers(prev => 
         prev.map(c => c.id === id ? { ...c, ...updatedCustomer } : c)
       );
@@ -320,7 +320,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Calculate licensing period based on expiryDate if not provided
       if (!license.licensingPeriod && license.expiryDate) {
         const today = new Date();
-        const diffTime = license.expiryDate.getTime() - today.getTime();
+        const diffTime = new Date(license.expiryDate).getTime() - today.getTime();
         license.licensingPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       }
       
@@ -351,12 +351,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const currentLicense = licenses.find(l => l.id === id);
         if (currentLicense) {
           const today = new Date();
-          const diffTime = license.expiryDate.getTime() - today.getTime();
+          const diffTime = new Date(license.expiryDate).getTime() - today.getTime();
           license.licensingPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
       }
       
-      const updatedLicense = await updateLicense(id, license);
+      const updatedLicense = await updateLicenseApi(id, license);
       setLicenses(prev => 
         prev.map(l => l.id === id ? { ...l, ...updatedLicense } : l)
       );
@@ -401,7 +401,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         licenses,
         setLicenses,
         addProduct,
-        updateProduct: updateProductImpl,
+        updateProduct,
         removeProduct,
         addProductVersion,
         updateProductVersion,
@@ -422,7 +422,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useData = () => {
-  const context = React.useContext(DataContext);
+  const context = useContext(DataContext);
   if (context === undefined) {
     throw new Error("useData must be used within a DataProvider");
   }
