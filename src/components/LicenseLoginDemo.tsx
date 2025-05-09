@@ -7,19 +7,24 @@ import { Label } from "@/components/ui/label";
 import { mockLicenses } from "@/data/mockLicenses";
 import { License } from "@/types/license";
 import { LicenseVerificationService } from "@/services/licenseVerificationService";
-import { Lock, Mail, Calendar, Shield, AlertTriangle, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Lock, Mail, Calendar, Shield, AlertTriangle, CheckCircle2, XCircle, Loader2, User, Laptop } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function LicenseLoginDemo() {
   const [licenseId, setLicenseId] = useState("l1"); // Default to a valid license
   const [isVerifying, setIsVerifying] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [productId, setProductId] = useState("p1"); // Default product
+  const [deviceInfo, setDeviceInfo] = useState("Windows 10"); // Default device
+  const [isAddingUser, setIsAddingUser] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{
     license: License;
     success: boolean;
     message: string;
     status: "verifying" | "success" | "warning" | "error";
+    canAccessProduct?: boolean;
   } | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -35,17 +40,32 @@ export function LicenseLoginDemo() {
       }
       
       // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Verify the license
-      const result = await LicenseVerificationService.verifyLicense(license);
+      // Verify the license, with user addition if selected
+      const result = await LicenseVerificationService.verifyLicense(license, isAddingUser);
+      
+      // Update user count if verification was successful and adding user
+      let updatedLicense = {...license};
+      if (result.isValid && isAddingUser && license.currentUsers !== undefined && license.maxUsersAllowed !== undefined) {
+        updatedLicense = {
+          ...license,
+          currentUsers: Math.min(license.currentUsers + 1, license.maxUsersAllowed)
+        };
+        // In a real application, this would be persisted to the database
+      }
+      
+      // Check if the user can access the specified product
+      const canAccessProduct = result.isValid && 
+        (!license.productId || license.productId === productId);
       
       if (!result.isValid) {
         setVerificationResult({
-          license,
+          license: updatedLicense,
           success: false,
           message: result.errorMessage || "License verification failed",
-          status: "error"
+          status: "error",
+          canAccessProduct: false
         });
         
         toast({
@@ -59,10 +79,11 @@ export function LicenseLoginDemo() {
       
       if (result.warningMessage) {
         setVerificationResult({
-          license,
+          license: updatedLicense,
           success: true,
           message: result.warningMessage,
-          status: "warning"
+          status: "warning",
+          canAccessProduct
         });
         
         toast({
@@ -74,15 +95,20 @@ export function LicenseLoginDemo() {
       }
       
       setVerificationResult({
-        license,
+        license: updatedLicense,
         success: true,
-        message: "Login successful",
-        status: "success"
+        message: canAccessProduct ? 
+          "Login successful - Product access granted" : 
+          "Login successful - But you don't have access to this product",
+        status: "success",
+        canAccessProduct
       });
       
       toast({
         title: "Success",
-        description: "License verified successfully",
+        description: canAccessProduct ? 
+          "License verified successfully with product access" : 
+          "License verified but product access denied",
       });
       
     } catch (error) {
@@ -141,6 +167,24 @@ export function LicenseLoginDemo() {
                 Select a demo license or enter a license ID
               </p>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="productId">Product to Access</Label>
+              <Select value={productId} onValueChange={setProductId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="p1">Product 1 (Default)</SelectItem>
+                  <SelectItem value="p2">Product 2</SelectItem>
+                  <SelectItem value="p3">Product 3</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Select which product you are trying to access
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -156,6 +200,7 @@ export function LicenseLoginDemo() {
                 />
               </div>
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -165,6 +210,36 @@ export function LicenseLoginDemo() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deviceInfo">Device Information</Label>
+              <div className="relative">
+                <Laptop className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="deviceInfo"
+                  placeholder="Device Information"
+                  value={deviceInfo}
+                  onChange={(e) => setDeviceInfo(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Device info used for MAC-based verification
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="addUser"
+                checked={isAddingUser}
+                onChange={() => setIsAddingUser(!isAddingUser)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="addUser" className="text-sm cursor-pointer">
+                Add user to license (for user count-based licenses)
+              </Label>
             </div>
             
             {verificationResult && (
@@ -203,10 +278,43 @@ export function LicenseLoginDemo() {
                 }`}>
                   {verificationResult.message}
                 </p>
+
+                {verificationResult.canAccessProduct !== undefined && (
+                  <div className={`mt-2 flex items-center gap-1 text-sm ${
+                    verificationResult.canAccessProduct ? "text-green-600" : "text-red-600"
+                  }`}>
+                    {verificationResult.canAccessProduct ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Product access granted</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4" />
+                        <span>Product access denied</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                
                 {verificationResult.license.expiryDate && (
                   <div className="flex items-center mt-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4 mr-1" />
                     Expires: {new Date(verificationResult.license.expiryDate).toLocaleDateString()}
+                  </div>
+                )}
+
+                {verificationResult.license.currentUsers !== undefined && 
+                verificationResult.license.maxUsersAllowed !== undefined && (
+                  <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                    <User className="h-4 w-4 mr-1" />
+                    Users: {verificationResult.license.currentUsers} / {verificationResult.license.maxUsersAllowed}
+                    {isAddingUser && verificationResult.status !== "error" && (
+                      <span className="ml-1 text-green-600">
+                        {verificationResult.license.currentUsers < verificationResult.license.maxUsersAllowed ? 
+                          "(User added)" : "(Maximum users reached)"}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

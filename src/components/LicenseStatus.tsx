@@ -17,25 +17,35 @@ export function LicenseStatus({ license, addingUser = false, showDetails = true,
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const verifyLicense = async () => {
       setIsLoading(true);
       try {
         const result = await LicenseVerificationService.verifyLicense(license, addingUser);
-        setVerificationResult(result);
+        if (isMounted) {
+          setVerificationResult(result);
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error("Error verifying license:", error);
-      } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     verifyLicense();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [license, addingUser]);
 
   if (isLoading) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <Shield className="h-5 w-5 text-muted-foreground animate-pulse" />
+        <Shield className="h-5 w-5 text-muted-foreground" />
         <span className="text-muted-foreground text-sm">Verifying license...</span>
       </div>
     );

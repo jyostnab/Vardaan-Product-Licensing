@@ -71,11 +71,11 @@ export class LicenseVerificationService {
       };
     }
     
-    // If we're approaching the user limit
+    // If we're approaching the user limit (80% or more)
     if (projectedUsers >= maxUsers * 0.8) {
       return {
         isValid: true,
-        warningMessage: `You are approaching your user limit. Currently using ${currentUsers} of ${maxUsers} licenses.`,
+        warningMessage: `You are approaching your user limit. Currently using ${currentUsers} of ${maxUsers} licenses${addingUser ? ". New user will be added upon confirmation." : "."}`,
         status: "warning"
       };
     }
@@ -213,6 +213,9 @@ export class LicenseVerificationService {
    * Verify a license based on its type
    */
   static async verifyLicense(license: License, addingUser = false): Promise<LicenseVerificationResult> {
+    // Add a small delay to simulate network latency and avoid flickering
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     switch (license.licenseType) {
       case 'date_based':
         return this.verifyDateBasedLicense(license);
