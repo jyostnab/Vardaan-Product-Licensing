@@ -51,7 +51,16 @@ export function CustomerForm({ onSuccess }: { onSuccess?: () => void }) {
   });
 
   function onSubmit(data: z.infer<typeof customerSchema>) {
-    addCustomer(data);
+    // Since we're using zod validation, we can be confident all required fields are present
+    addCustomer({
+      name: data.name,
+      location: data.location,
+      country: data.country,
+      contact: data.contact,
+      mobile: data.mobile,
+      email: data.email
+    });
+    
     toast({
       title: "Customer added",
       description: `${data.name} has been added successfully.`

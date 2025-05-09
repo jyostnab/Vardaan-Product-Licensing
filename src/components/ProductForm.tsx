@@ -45,7 +45,12 @@ export function ProductForm({ onSuccess }: { onSuccess?: () => void }) {
   });
 
   function onSubmit(data: z.infer<typeof productSchema>) {
-    addProduct(data);
+    // Since we're using zod validation, we can be confident all required fields are present
+    addProduct({
+      name: data.name,
+      description: data.description
+    });
+    
     toast({
       title: "Product added",
       description: `${data.name} has been added successfully.`
