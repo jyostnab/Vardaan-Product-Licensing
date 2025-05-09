@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,9 +24,9 @@ import {
   DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { useData } from "@/context/DataContext";
-import { Product } from "@/types/license";
+import { Product, ProductVersion } from "@/types/license";
 
 const versionSchema = z.object({
   version: z.string().min(1, "Version number is required"),
@@ -34,58 +34,118 @@ const versionSchema = z.object({
   notes: z.string().min(1, "Release notes are required"),
 });
 
-export function ProductVersionForm({ product, onSuccess }: { product: Product, onSuccess?: () => void }) {
-  const { addProductVersion } = useData();
+export function ProductVersionForm({ 
+  product,
+  version,
+  onSuccess 
+}: { 
+  product: Product, 
+  version?: ProductVersion,
+  onSuccess?: () => void 
+}) {
+  const { addProductVersion, updateProductVersion } = useData();
   const [open, setOpen] = useState(false);
+  
+  const isEditing = !!version;
 
   const form = useForm<z.infer<typeof versionSchema>>({
     resolver: zodResolver(versionSchema),
     defaultValues: {
-      version: "",
-      releaseDate: new Date().toISOString().split('T')[0],
-      notes: ""
+      version: version?.version || "",
+      releaseDate: version ? new Date(version.releaseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      notes: version?.notes || ""
     }
   });
+  
+  // Update form values when version changes
+  useEffect(() => {
+    if (version) {
+      form.reset({
+        version: version.version,
+        releaseDate: new Date(version.releaseDate).toISOString().split('T')[0],
+        notes: version.notes || ""
+      });
+    }
+  }, [version, form]);
 
-  function onSubmit(data: z.infer<typeof versionSchema>) {
-    // Convert string date to Date object
-    const releaseDate = new Date(data.releaseDate);
-    
-    addProductVersion({
-      productId: product.id,
-      version: data.version,
-      releaseDate,
-      notes: data.notes
-    });
-    
-    toast({
-      title: "Version added",
-      description: `Version ${data.version} has been added to ${product.name}.`
-    });
-    
-    form.reset({
-      version: "",
-      releaseDate: new Date().toISOString().split('T')[0],
-      notes: ""
-    });
-    
-    setOpen(false);
-    if (onSuccess) onSuccess();
+  async function onSubmit(data: z.infer<typeof versionSchema>) {
+    try {
+      // Convert string date to Date object
+      const releaseDate = new Date(data.releaseDate);
+      
+      if (isEditing && version) {
+        // Update existing version
+        await updateProductVersion(version.id, {
+          version: data.version,
+          releaseDate,
+          notes: data.notes
+        });
+        
+        toast({
+          title: "Version updated",
+          description: `Version ${data.version} has been updated.`
+        });
+      } else {
+        // Create new version
+        await addProductVersion({
+          productId: product.id,
+          version: data.version,
+          releaseDate,
+          notes: data.notes
+        });
+        
+        toast({
+          title: "Version added",
+          description: `Version ${data.version} has been added to ${product.name}.`
+        });
+      }
+      
+      form.reset({
+        version: "",
+        releaseDate: new Date().toISOString().split('T')[0],
+        notes: ""
+      });
+      
+      setOpen(false);
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error("Error saving version:", error);
+      toast({
+        title: `Error ${isEditing ? 'updating' : 'adding'} version`,
+        description: `Failed to ${isEditing ? 'update' : 'add'} the version. Please try again.`,
+        variant: "destructive"
+      });
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Version
-        </Button>
+        {isEditing ? (
+          <Button variant="ghost" size="sm">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Version
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Version
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add Version for {product.name}</DialogTitle>
+          <DialogTitle>
+            {isEditing 
+              ? `Edit Version ${version?.version}`
+              : `Add Version for ${product.name}`
+            }
+          </DialogTitle>
           <DialogDescription>
-            Enter the version details for this product.
+            {isEditing
+              ? "Update the version details."
+              : "Enter the version details for this product."
+            }
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -140,7 +200,7 @@ export function ProductVersionForm({ product, onSuccess }: { product: Product, o
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Add Version</Button>
+              <Button type="submit">{isEditing ? 'Update' : 'Add'} Version</Button>
             </DialogFooter>
           </form>
         </Form>

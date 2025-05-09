@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,55 +24,100 @@ import {
   DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { useData } from "@/context/DataContext";
+import { Product } from "@/types/license";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   description: z.string().min(1, "Product description is required"),
 });
 
-export function ProductForm({ onSuccess }: { onSuccess?: () => void }) {
-  const { addProduct } = useData();
+export function ProductForm({ product, onSuccess }: { product?: Product, onSuccess?: () => void }) {
+  const { addProduct, updateProduct } = useData();
   const [open, setOpen] = useState(false);
+  
+  const isEditing = !!product;
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: "",
-      description: ""
+      name: product?.name || "",
+      description: product?.description || ""
     }
   });
+  
+  // Update form values when product changes
+  useEffect(() => {
+    if (product) {
+      form.reset({
+        name: product.name,
+        description: product.description
+      });
+    }
+  }, [product, form]);
 
-  function onSubmit(data: z.infer<typeof productSchema>) {
-    // Since we're using zod validation, we can be confident all required fields are present
-    addProduct({
-      name: data.name,
-      description: data.description
-    });
-    
-    toast({
-      title: "Product added",
-      description: `${data.name} has been added successfully.`
-    });
-    form.reset();
-    setOpen(false);
-    if (onSuccess) onSuccess();
+  async function onSubmit(data: z.infer<typeof productSchema>) {
+    try {
+      if (isEditing && product) {
+        // Update existing product
+        await updateProduct(product.id, {
+          name: data.name,
+          description: data.description
+        });
+        
+        toast({
+          title: "Product updated",
+          description: `${data.name} has been updated successfully.`
+        });
+      } else {
+        // Add new product
+        await addProduct({
+          name: data.name,
+          description: data.description
+        });
+        
+        toast({
+          title: "Product added",
+          description: `${data.name} has been added successfully.`
+        });
+      }
+      
+      form.reset();
+      setOpen(false);
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast({
+        title: `Error ${isEditing ? 'updating' : 'adding'} product`,
+        description: `Failed to ${isEditing ? 'update' : 'add'} the product. Please try again.`,
+        variant: "destructive"
+      });
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Product
-        </Button>
+        {isEditing ? (
+          <Button variant="outline" size="sm">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Product
+          </Button>
+        ) : (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Product
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Product</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Product' : 'Add New Product'}</DialogTitle>
           <DialogDescription>
-            Enter the product details. You can add versions after creating the product.
+            {isEditing 
+              ? 'Update the product details.' 
+              : 'Enter the product details. You can add versions after creating the product.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -113,7 +158,7 @@ export function ProductForm({ onSuccess }: { onSuccess?: () => void }) {
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Add Product</Button>
+              <Button type="submit">{isEditing ? 'Update' : 'Add'} Product</Button>
             </DialogFooter>
           </form>
         </Form>

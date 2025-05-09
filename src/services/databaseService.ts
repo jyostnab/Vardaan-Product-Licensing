@@ -48,6 +48,44 @@ export const createProduct = async (product: Omit<Product, "id" | "createdAt" | 
   };
 };
 
+export const updateProduct = async (id: string, product: Partial<Product>): Promise<Product> => {
+  const { data, error } = await supabase
+    .from('products')
+    .update({
+      name: product.name,
+      description: product.description
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating product:", error);
+    throw error;
+  }
+  
+  return {
+    id: data.id,
+    name: data.name, 
+    description: data.description,
+    versions: [],  // This will be populated by the DataContext
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
+  };
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error("Error deleting product:", error);
+    throw error;
+  }
+};
+
 // Product Version Services
 export const fetchProductVersions = async (): Promise<ProductVersion[]> => {
   const { data, error } = await supabase
@@ -96,6 +134,48 @@ export const createProductVersion = async (version: Omit<ProductVersion, "id" | 
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
+};
+
+export const updateProductVersion = async (id: string, version: Partial<ProductVersion>): Promise<ProductVersion> => {
+  const updateData: any = {};
+  
+  if (version.version) updateData.version = version.version;
+  if (version.notes) updateData.notes = version.notes;
+  if (version.releaseDate) updateData.release_date = version.releaseDate.toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
+    .from('product_versions')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating product version:", error);
+    throw error;
+  }
+  
+  return {
+    id: data.id,
+    productId: data.product_id,
+    version: data.version,
+    releaseDate: new Date(data.release_date),
+    notes: data.notes,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
+  };
+};
+
+export const deleteProductVersion = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('product_versions')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error("Error deleting product version:", error);
+    throw error;
+  }
 };
 
 // Customer Services
@@ -152,6 +232,53 @@ export const createCustomer = async (customer: Omit<Customer, "id" | "createdAt"
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
+};
+
+export const updateCustomer = async (id: string, customer: Partial<Customer>): Promise<Customer> => {
+  const updateData: any = {};
+  
+  if (customer.name) updateData.name = customer.name;
+  if (customer.location) updateData.location = customer.location;
+  if (customer.country) updateData.country = customer.country;
+  if (customer.contact) updateData.contact = customer.contact;
+  if (customer.mobile) updateData.mobile = customer.mobile;
+  if (customer.email) updateData.email = customer.email;
+  
+  const { data, error } = await supabase
+    .from('customers')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating customer:", error);
+    throw error;
+  }
+  
+  return {
+    id: data.id,
+    name: data.name,
+    location: data.location,
+    country: data.country,
+    contact: data.contact,
+    mobile: data.mobile,
+    email: data.email,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
+  };
+};
+
+export const deleteCustomer = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('customers')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error("Error deleting customer:", error);
+    throw error;
+  }
 };
 
 // License Services
@@ -310,6 +437,154 @@ export const createLicense = async (license: Omit<License, "id" | "createdAt" | 
     createdAt: new Date(created_at),
     updatedAt: new Date(updated_at)
   };
+};
+
+export const updateLicense = async (id: string, license: Partial<License>): Promise<License> => {
+  const updateData: any = {};
+  
+  if (license.customerId) updateData.customer_id = license.customerId;
+  if (license.productId) updateData.product_id = license.productId;
+  if (license.productVersionId) updateData.product_version_id = license.productVersionId;
+  if (license.licenseType) updateData.license_type = license.licenseType;
+  if (license.licenseScope) updateData.license_scope = license.licenseScope;
+  if (license.licensingPeriod) updateData.licensing_period = license.licensingPeriod;
+  if (license.renewableAlertMessage !== undefined) updateData.renewable_alert_message = license.renewableAlertMessage;
+  if (license.gracePeriodDays !== undefined) updateData.grace_period_days = license.gracePeriodDays;
+  if (license.expiryDate) updateData.expiry_date = license.expiryDate.toISOString().split('T')[0];
+  if (license.maxUsersAllowed !== undefined) updateData.max_users_allowed = license.maxUsersAllowed;
+  if (license.currentUsers !== undefined) updateData.current_users = license.currentUsers;
+  
+  const { data, error } = await supabase
+    .from('licenses')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating license:", error);
+    throw error;
+  }
+  
+  // Handle MAC addresses if they're updated
+  if (license.macAddresses) {
+    // Delete existing MAC addresses
+    const { error: deleteMacError } = await supabase
+      .from('license_mac_addresses')
+      .delete()
+      .eq('license_id', id);
+      
+    if (deleteMacError) {
+      console.error("Error deleting MAC addresses:", deleteMacError);
+    }
+    
+    // Insert new MAC addresses
+    if (license.macAddresses.length > 0) {
+      const macAddressInserts = license.macAddresses.map(mac => ({
+        license_id: id,
+        mac_address: mac
+      }));
+      
+      const { error: macError } = await supabase
+        .from('license_mac_addresses')
+        .insert(macAddressInserts);
+        
+      if (macError) {
+        console.error("Error adding MAC addresses:", macError);
+      }
+    }
+  }
+  
+  // Handle allowed countries if they're updated
+  if (license.allowedCountries) {
+    // Delete existing countries
+    const { error: deleteCountryError } = await supabase
+      .from('license_allowed_countries')
+      .delete()
+      .eq('license_id', id);
+      
+    if (deleteCountryError) {
+      console.error("Error deleting allowed countries:", deleteCountryError);
+    }
+    
+    // Insert new countries
+    if (license.allowedCountries.length > 0) {
+      const countryInserts = license.allowedCountries.map(country => ({
+        license_id: id,
+        country_code: country
+      }));
+      
+      const { error: countryError } = await supabase
+        .from('license_allowed_countries')
+        .insert(countryInserts);
+        
+      if (countryError) {
+        console.error("Error adding allowed countries:", countryError);
+      }
+    }
+  }
+  
+  // Fetch the updated license with customer data
+  const { data: fullLicense, error: fetchError } = await supabase
+    .from('licenses')
+    .select(`
+      *,
+      customers:customer_id (*)
+    `)
+    .eq('id', id)
+    .single();
+    
+  if (fetchError) {
+    console.error("Error fetching updated license:", fetchError);
+    throw fetchError;
+  }
+  
+  // Convert to our type structure
+  const { customers, product_id, product_version_id, customer_id, license_type, license_scope, 
+          licensing_period, renewable_alert_message, grace_period_days, expiry_date, 
+          max_users_allowed, current_users, created_at, updated_at, ...rest } = fullLicense;
+  
+  return {
+    ...rest,
+    productId: product_id,
+    productVersionId: product_version_id,
+    customerId: customer_id,
+    customer: customers ? {
+      id: customers.id,
+      name: customers.name,
+      location: customers.location,
+      country: customers.country,
+      contact: customers.contact,
+      mobile: customers.mobile,
+      email: customers.email,
+      createdAt: new Date(customers.created_at),
+      updatedAt: new Date(customers.updated_at)
+    } : undefined,
+    licenseType: license_type as any,
+    licenseScope: license_scope as any,
+    licensingPeriod: licensing_period,
+    renewableAlertMessage: renewable_alert_message || '',
+    gracePeriodDays: grace_period_days,
+    expiryDate: expiry_date ? new Date(expiry_date) : undefined,
+    maxUsersAllowed: max_users_allowed,
+    currentUsers: current_users,
+    macAddresses: license.macAddresses,
+    allowedCountries: license.allowedCountries,
+    createdAt: new Date(created_at),
+    updatedAt: new Date(updated_at)
+  };
+};
+
+export const deleteLicense = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('licenses')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error("Error deleting license:", error);
+    throw error;
+  }
 };
 
 // License verification
