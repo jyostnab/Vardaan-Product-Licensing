@@ -18,7 +18,7 @@ export class LicenseVerificationService {
       const deviceInfo = navigator.userAgent;
 
       // Use direct database call instead of API
-      return await verifyLicense(
+      const result = await verifyLicense(
         license,
         addingUser,
         deviceInfo,
@@ -26,6 +26,17 @@ export class LicenseVerificationService {
         macAddress,
         countryCode
       );
+      
+      // Ensure status is one of the valid values in LicenseVerificationResult
+      const status = result.status as "valid" | "warning" | "expired";
+      
+      return {
+        isValid: result.isValid,
+        status: status,
+        warningMessage: result.warningMessage,
+        errorMessage: result.errorMessage,
+        expiresIn: result.expiresIn
+      };
     } catch (error) {
       console.error("License verification error:", error);
       
