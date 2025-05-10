@@ -6,6 +6,7 @@ import { LicenseLoginDemo } from "@/components/LicenseLoginDemo";
 import { ProductsTab } from "@/components/ProductsTab";
 import { CreateLicenseForm } from "@/components/CreateLicenseForm";
 import { DatabaseSchemaGuide } from "@/components/DatabaseSchemaGuide";
+import { DatabaseConnectionCheck } from "@/components/DatabaseConnectionCheck";
 import { Shield, Terminal, Package, FileText, Database } from "lucide-react";
 
 const Index = () => {
@@ -26,6 +27,8 @@ const Index = () => {
       </header>
 
       <main className="container py-6">
+        <DatabaseConnectionCheck />
+        
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="dashboard" className="text-base py-3">
