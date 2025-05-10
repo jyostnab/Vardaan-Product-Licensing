@@ -1,16 +1,6 @@
 
 import { License, LicenseVerificationResult } from "@/types/license";
-import axios from "axios";
-
-// Set up axios instance
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json"
-  }
-});
+import { verifyLicense, getLicenseVerificationLogs } from "@/services/directDatabaseService";
 
 export class LicenseVerificationService {
   /**
@@ -27,15 +17,15 @@ export class LicenseVerificationService {
       const countryCode = license.allowedCountries?.[0] || license.customer?.country || null;
       const deviceInfo = navigator.userAgent;
 
-      const response = await api.post('/licenses/verify', {
-        licenseId: license.id,
-        addUser: addingUser,
+      // Use direct database call instead of API
+      return await verifyLicense(
+        license,
+        addingUser,
+        deviceInfo,
+        undefined, // IP address will be determined by the server
         macAddress,
-        countryCode,
-        deviceInfo
-      });
-
-      return response.data;
+        countryCode
+      );
     } catch (error) {
       console.error("License verification error:", error);
       
@@ -54,8 +44,7 @@ export class LicenseVerificationService {
    */
   static async getVerificationLogs(licenseId: string) {
     try {
-      const response = await api.get(`/licenses/${licenseId}/logs`);
-      return response.data;
+      return await getLicenseVerificationLogs(licenseId);
     } catch (error) {
       console.error("Error fetching verification logs:", error);
       throw error;

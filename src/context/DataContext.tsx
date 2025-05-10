@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Customer, License, Product, ProductVersion } from "@/types/license";
 import { toast } from "@/hooks/use-toast";
@@ -7,7 +6,7 @@ import {
   fetchProductVersions, createProductVersion, updateProductVersion as updateProductVersionApi, deleteProductVersion,
   fetchCustomers, createCustomer, updateCustomer as updateCustomerApi, deleteCustomer,
   fetchLicenses, createLicense, updateLicense as updateLicenseApi, deleteLicense
-} from "@/services/databaseService";
+} from "@/services/directDatabaseService";
 
 type DataContextType = {
   products: Product[];
