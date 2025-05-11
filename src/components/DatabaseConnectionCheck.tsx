@@ -14,8 +14,11 @@ export function DatabaseConnectionCheck() {
     setConnectionStatus("checking");
     
     try {
-      // Try direct database connection first
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/check-connection`);
+      // Use API endpoint to check DB connection instead of direct connection
+      const apiUrl = `${import.meta.env.VITE_API_URL}/check-connection`;
+      console.log("Checking connection with:", apiUrl);
+      
+      const response = await fetch(apiUrl);
       const data = await response.json();
       
       if (data.success) {

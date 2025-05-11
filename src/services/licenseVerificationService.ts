@@ -17,7 +17,7 @@ export class LicenseVerificationService {
       const countryCode = license.allowedCountries?.[0] || license.customer?.country || null;
       const deviceInfo = navigator.userAgent;
 
-      // Use direct database call instead of API
+      // Use API endpoint instead of direct database access
       const result = await verifyLicense(
         license,
         addingUser,
