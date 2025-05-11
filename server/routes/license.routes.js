@@ -27,5 +27,11 @@ module.exports = app => {
   // Get verification logs for a license
   router.get("/:id/logs", licenses.getVerificationLogs);
 
+  // Check a license's status
+  router.get("/:id/status", licenses.getLicenseStatus);
+
+  // Generate a new license key
+  router.post("/generate-key", licenses.generateLicenseKey);
+
   app.use("/api/licenses", router);
 };

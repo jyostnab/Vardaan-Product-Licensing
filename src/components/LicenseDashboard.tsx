@@ -7,9 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, RefreshCw } from "lucide-react";
+import { Search, Plus, RefreshCw, Filter } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function LicenseDashboard() {
   const { licenses, customers, isLoading, refreshData } = useData();
@@ -19,6 +27,7 @@ export function LicenseDashboard() {
   const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "expiring">("newest");
 
   // Process licenses to include customer data
   const licensesWithCustomer = licenses.map(license => {
@@ -45,8 +54,23 @@ export function LicenseDashboard() {
       filtered = filtered.filter(license => license.licenseType === activeTab);
     }
     
+    // Apply sorting
+    filtered.sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (sortBy === "oldest") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else if (sortBy === "expiring") {
+        // Handle null/undefined expiry dates
+        if (!a.expiryDate) return 1;
+        if (!b.expiryDate) return -1;
+        return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+      }
+      return 0;
+    });
+    
     setFilteredLicenses(filtered);
-  }, [licenses, customers, activeTab, searchQuery, licensesWithCustomer]);
+  }, [licenses, customers, activeTab, searchQuery, sortBy, licensesWithCustomer]);
 
   const handleLicenseClick = (license: License) => {
     setSelectedLicense(license);
@@ -83,6 +107,7 @@ export function LicenseDashboard() {
               key={license.id} 
               license={license} 
               onClick={() => handleLicenseClick(license)}
+              className="animate-fade-in"
             />
           ))}
         </div>
@@ -90,7 +115,7 @@ export function LicenseDashboard() {
     }
     
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50 rounded-lg border border-slate-100 shadow-sm">
         <div className="rounded-full bg-muted p-4 mb-4">
           <Search className="h-6 w-6 text-muted-foreground" />
         </div>
@@ -116,7 +141,9 @@ export function LicenseDashboard() {
     <div className="container py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">License Guardian Shield</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            License Dashboard
+          </h1>
           <p className="text-muted-foreground mt-1">
             Manage and verify your software licenses
           </p>
@@ -148,8 +175,8 @@ export function LicenseDashboard() {
         className="mb-6"
       >
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <TabsList>
-            <TabsTrigger value="all" className="relative">
+          <TabsList className="rounded-lg shadow-sm">
+            <TabsTrigger value="all" className="relative data-[state=active]:shadow-sm">
               All
               <Badge variant="outline" className="ml-2 bg-background">
                 {licenses.length}
@@ -161,20 +188,52 @@ export function LicenseDashboard() {
             <TabsTrigger value="country_based">Country Based</TabsTrigger>
             <TabsTrigger value="mixed">Mixed</TabsTrigger>
           </TabsList>
-          <div className="relative w-full sm:w-auto">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              type="search"
-              placeholder="Search licenses..."
-              className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              disabled={isLoading}
-            />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                type="search"
+                placeholder="Search licenses..."
+                className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="px-2">
+                  <Filter className="h-4 w-4" />
+                  <span className="sr-only">Filter</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Sort licenses by</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setSortBy("newest")}
+                  className={sortBy === "newest" ? "bg-primary/10" : ""}
+                >
+                  Newest first
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setSortBy("oldest")}
+                  className={sortBy === "oldest" ? "bg-primary/10" : ""}
+                >
+                  Oldest first
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setSortBy("expiring")}
+                  className={sortBy === "expiring" ? "bg-primary/10" : ""}
+                >
+                  Expiring soon
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        <TabsContent value={activeTab} className="mt-0">
+        <TabsContent value={activeTab} className="mt-0 animate-fade-in">
           {renderLicenseGrid()}
         </TabsContent>
       </Tabs>

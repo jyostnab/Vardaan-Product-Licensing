@@ -1,6 +1,6 @@
 
 import { License, LicenseVerificationResult } from "@/types/license";
-import { verifyLicense, getLicenseVerificationLogs } from "@/services/directDatabaseService";
+import { verifyLicense, getLicenseVerificationLogs, updateLicenseUserCount } from "@/services/directDatabaseService";
 
 export class LicenseVerificationService {
   /**
@@ -27,6 +27,18 @@ export class LicenseVerificationService {
         macAddress,
         countryCode
       );
+      
+      // If adding user and verification succeeded, update user count
+      if (addingUser && result.isValid && license.licenseType === 'user_count_based' || license.licenseType === 'mixed') {
+        try {
+          await this.updateUserCount(license.id, true);
+          console.log("User count updated successfully");
+        } catch (error) {
+          console.warn("Error updating user count:", error);
+          result.warningMessage = (result.warningMessage || '') + 
+            ' User was added but there was an issue updating the count.';
+        }
+      }
       
       // Ensure status is one of the valid values in LicenseVerificationResult
       const status = result.status as "valid" | "warning" | "expired";
@@ -65,48 +77,18 @@ export class LicenseVerificationService {
   
   /**
    * Update user count for a license
-   * @param license The license to update
+   * @param licenseId The license ID to update
    * @param increment Whether to increment (true) or decrement (false) the count
    * @returns Updated license
    */
   static async updateUserCount(licenseId: string, increment: boolean = true): Promise<License> {
     try {
-      // This is a placeholder - in a real app, this would call the server API
-      const mockLicense = await this.getMockLicense(licenseId);
-      
-      if (!mockLicense) {
-        throw new Error("License not found");
-      }
-      
-      if (mockLicense.currentUsers === undefined || mockLicense.maxUsersAllowed === undefined) {
-        throw new Error("License does not support user count management");
-      }
-      
-      // Update user count
-      if (increment) {
-        if (mockLicense.currentUsers >= mockLicense.maxUsersAllowed) {
-          throw new Error("License user limit reached");
-        }
-        mockLicense.currentUsers += 1;
-      } else {
-        mockLicense.currentUsers = Math.max(0, mockLicense.currentUsers - 1);
-      }
-      
-      return mockLicense;
+      // Call the API to update the user count
+      const updatedLicense = await updateLicenseUserCount(licenseId, increment);
+      return updatedLicense;
     } catch (error) {
       console.error("Error updating user count:", error);
       throw error;
     }
-  }
-  
-  /**
-   * Get a license by ID (mock implementation)
-   * @param licenseId License ID
-   * @returns License or undefined if not found
-   */
-  private static async getMockLicense(licenseId: string): Promise<License | undefined> {
-    // In a real implementation, this would call the API
-    const { mockLicenses } = await import('@/data/mockLicenses');
-    return mockLicenses.find(l => l.id === licenseId);
   }
 }
