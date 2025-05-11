@@ -1,3 +1,4 @@
+
 import type { Customer, License, Product, ProductVersion } from "@/types/license";
 
 // This is a placeholder implementation that will use the API instead
@@ -209,6 +210,23 @@ export const verifyLicense = async (
     return data;
   } catch (error) {
     console.error("Error verifying license:", error);
+    throw error;
+  }
+};
+
+// Update user count for a license
+export const updateUserCount = async (
+  licenseId: string,
+  increment: boolean = true
+) => {
+  try {
+    const data = await apiRequest(`licenses/${licenseId}/user-count`, 'PUT', {
+      increment
+    });
+    
+    return data;
+  } catch (error) {
+    console.error("Error updating user count:", error);
     throw error;
   }
 };

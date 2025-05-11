@@ -456,12 +456,15 @@ exports.verifyLicense = async (req, res) => {
     // If verification is successful and addUser flag is true, increment user count
     if (isValid && addUser && 
        (license.license_type === 'user_count_based' || license.license_type === 'mixed') &&
-       license.max_users_allowed !== null) {
+       license.max_users_allowed !== null && license.current_users < license.max_users_allowed) {
       
       await License.update(
         { current_users: license.current_users + 1 },
         { where: { id: licenseId } }
       );
+      
+      // Update the value for the response
+      license.current_users += 1;
     }
 
     // Log the verification attempt
@@ -481,10 +484,72 @@ exports.verifyLicense = async (req, res) => {
       warningMessage,
       errorMessage,
       expiresIn,
+      currentUsers: license.current_users,
+      maxUsersAllowed: license.max_users_allowed
     });
   } catch (err) {
     return res.status(500).json({
       message: err.message || "Error occurred during license verification."
+    });
+  }
+};
+
+// Update user count for a license
+exports.updateUserCount = async (req, res) => {
+  try {
+    const licenseId = req.params.id;
+    const { increment } = req.body;
+    
+    // Increment defaults to true if not specified
+    const shouldIncrement = increment !== false;
+    
+    // Get the license
+    const license = await License.findByPk(licenseId);
+    
+    if (!license) {
+      return res.status(404).json({ 
+        message: "License not found" 
+      });
+    }
+    
+    // Check if license supports user count
+    if (license.max_users_allowed === null || 
+        (license.license_type !== 'user_count_based' && license.license_type !== 'mixed')) {
+      return res.status(400).json({ 
+        message: "This license does not support user count management" 
+      });
+    }
+    
+    let newUserCount;
+    
+    if (shouldIncrement) {
+      // Check if max users is reached
+      if (license.current_users >= license.max_users_allowed) {
+        return res.status(400).json({ 
+          message: `License user limit reached (${license.current_users}/${license.max_users_allowed})` 
+        });
+      }
+      
+      newUserCount = license.current_users + 1;
+    } else {
+      // Don't go below 0
+      newUserCount = Math.max(0, license.current_users - 1);
+    }
+    
+    // Update the license
+    await License.update(
+      { current_users: newUserCount },
+      { where: { id: licenseId } }
+    );
+    
+    return res.json({
+      message: `User count ${shouldIncrement ? 'incremented' : 'decremented'} successfully`,
+      currentUsers: newUserCount,
+      maxUsersAllowed: license.max_users_allowed
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Error updating user count"
     });
   }
 };

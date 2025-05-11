@@ -21,6 +21,9 @@ module.exports = app => {
   // Verify a License
   router.post("/verify", licenses.verifyLicense);
   
+  // Update user count for a license
+  router.put("/:id/user-count", licenses.updateUserCount);
+  
   // Get verification logs for a license
   router.get("/:id/logs", licenses.getVerificationLogs);
 
