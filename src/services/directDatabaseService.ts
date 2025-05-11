@@ -1,8 +1,4 @@
-
-import type { Customer, License, Product, ProductVersion } from "@/types/license";
-
-// This is a placeholder implementation that will use the API instead
-// of trying to connect directly to MySQL from the browser
+import type { Customer, License, Product, ProductVersion, LicenseVerificationResult } from "@/types/license";
 
 // API base URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
@@ -237,6 +233,62 @@ export const getLicenseVerificationLogs = async (licenseId: string) => {
     return data;
   } catch (error) {
     console.error("Error fetching license verification logs:", error);
+    throw error;
+  }
+};
+
+// New function to check license status
+export const checkLicenseStatus = async (licenseId: string): Promise<LicenseVerificationResult> => {
+  try {
+    const data = await apiRequest(`licenses/${licenseId}/status`);
+    return data;
+  } catch (error) {
+    console.error("Error checking license status:", error);
+    throw error;
+  }
+};
+
+// New function to generate license key
+export const generateLicenseKey = async (licenseDetails: {
+  productId: string;
+  customerId: string;
+  licenseType: string;
+  licenseScope?: string;
+  expiryDate?: Date;
+  maxUsersAllowed?: number;
+}) => {
+  try {
+    const data = await apiRequest('licenses/generate-key', 'POST', licenseDetails);
+    return data;
+  } catch (error) {
+    console.error("Error generating license key:", error);
+    throw error;
+  }
+};
+
+// New function to validate a license key from an external system
+export const validateLicenseKey = async (licenseKey: string, deviceInfo?: string, macAddress?: string, countryCode?: string) => {
+  try {
+    const data = await apiRequest('licenses/validate-key', 'POST', {
+      licenseKey,
+      deviceInfo: deviceInfo || navigator.userAgent,
+      macAddress,
+      countryCode
+    });
+    return data;
+  } catch (error) {
+    console.error("Error validating license key:", error);
+    throw error;
+  }
+};
+
+// New function to get license details by key
+export const getLicenseByKey = async (licenseKey: string): Promise<License> => {
+  try {
+    const data = await apiRequest(`licenses/by-key/${licenseKey}`);
+    return data;
+  } catch (error) {
+    console.error("Error fetching license by key:", error);
     throw error;
   }
 };

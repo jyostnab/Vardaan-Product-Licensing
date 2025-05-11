@@ -59,6 +59,9 @@ export interface License {
   // Country-based licensing
   allowedCountries?: string[]; // Array of allowed country codes
   
+  // License key
+  licenseKey?: string;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,3 +73,15 @@ export type LicenseVerificationResult = {
   expiresIn?: number; // Days until expiry
   status: 'valid' | 'warning' | 'expired';
 };
+
+export interface LicenseVerificationLog {
+  id: string;
+  licenseId: string;
+  isValid: boolean;
+  ipAddress?: string;
+  macAddress?: string;
+  countryCode?: string;
+  deviceInfo?: string;
+  message?: string;
+  verificationDate: Date;
+}

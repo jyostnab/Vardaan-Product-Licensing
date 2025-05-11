@@ -1,6 +1,6 @@
 
 import { License, LicenseVerificationResult } from "@/types/license";
-import { verifyLicense, getLicenseVerificationLogs, updateUserCount } from "@/services/directDatabaseService";
+import { verifyLicense, getLicenseVerificationLogs, updateUserCount, validateLicenseKey } from "@/services/directDatabaseService";
 
 export class LicenseVerificationService {
   /**
@@ -57,6 +57,44 @@ export class LicenseVerificationService {
         isValid: false,
         status: 'expired',
         errorMessage: 'Error verifying license. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Verify a license using a license key
+   * @param licenseKey The license key to verify
+   * @param macAddress Optional MAC address for MAC-based licenses
+   * @param countryCode Optional country code for country-based licenses
+   * @returns License verification result
+   */
+  static async verifyLicenseByKey(licenseKey: string, macAddress?: string, countryCode?: string): Promise<LicenseVerificationResult> {
+    try {
+      // Use API endpoint for verification
+      const result = await validateLicenseKey(
+        licenseKey,
+        navigator.userAgent,
+        macAddress,
+        countryCode
+      );
+      
+      // Ensure status is one of the valid values in LicenseVerificationResult
+      const status = result.status as "valid" | "warning" | "expired";
+      
+      return {
+        isValid: result.isValid,
+        status: status,
+        warningMessage: result.warningMessage,
+        errorMessage: result.errorMessage,
+        expiresIn: result.expiresIn
+      };
+    } catch (error) {
+      console.error("License key verification error:", error);
+      
+      return {
+        isValid: false,
+        status: 'expired',
+        errorMessage: 'Error verifying license key. Please try again.'
       };
     }
   }

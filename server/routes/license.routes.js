@@ -32,6 +32,12 @@ module.exports = app => {
 
   // Generate a new license key
   router.post("/generate-key", licenses.generateLicenseKey);
+  
+  // Validate a license key from external system
+  router.post("/validate-key", licenses.validateLicenseKey);
+  
+  // Get license by key
+  router.get("/by-key/:key", licenses.getLicenseByKey);
 
   app.use("/api/licenses", router);
 };

@@ -1,10 +1,10 @@
-
 const db = require("../models");
 const License = db.licenses;
 const Customer = db.customers;
 const LicenseAllowedCountry = db.licenseAllowedCountries;
 const LicenseMacAddress = db.licenseMacAddresses;
 const { Op } = require("sequelize");
+const crypto = require('crypto');
 
 // Create and Save a new License
 exports.create = async (req, res) => {
@@ -568,6 +568,360 @@ exports.getVerificationLogs = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       message: err.message || "Error retrieving verification logs."
+    });
+  }
+};
+
+// Get license status
+exports.getLicenseStatus = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const license = await License.findByPk(id, {
+      include: [
+        {
+          model: LicenseAllowedCountry,
+          as: "allowed_countries"
+        },
+        {
+          model: LicenseMacAddress,
+          as: "mac_addresses"
+        }
+      ]
+    });
+    
+    if (!license) {
+      return res.status(404).json({
+        message: `License with id=${id} was not found.`
+      });
+    }
+    
+    // Check if license has expired
+    let isValid = true;
+    let status = 'valid';
+    let warningMessage = null;
+    let errorMessage = null;
+    let expiresIn = null;
+    
+    if (license.expiry_date) {
+      const expiryDate = new Date(license.expiry_date);
+      const today = new Date();
+      
+      // Calculate days until expiry
+      const timeDiff = expiryDate.getTime() - today.getTime();
+      expiresIn = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      
+      if (expiryDate < today) {
+        // Check grace period
+        const gracePeriodDate = new Date(expiryDate);
+        gracePeriodDate.setDate(gracePeriodDate.getDate() + license.grace_period_days);
+        
+        if (today <= gracePeriodDate) {
+          status = 'warning';
+          warningMessage = `License has expired but is in grace period. Expires in ${license.grace_period_days - Math.ceil((today - expiryDate) / (1000 * 3600 * 24))} days.`;
+        } else {
+          isValid = false;
+          status = 'expired';
+          errorMessage = 'License has expired and grace period has ended.';
+        }
+      } else if (expiresIn <= 30) {
+        status = 'warning';
+        warningMessage = `License will expire in ${expiresIn} days.`;
+      }
+    }
+    
+    // Check user count if license is user_count_based or mixed
+    if ((license.license_type === 'user_count_based' || license.license_type === 'mixed') && 
+        license.max_users_allowed !== null) {
+      
+      if (license.current_users >= license.max_users_allowed) {
+        status = 'warning';
+        warningMessage = `User limit reached. License allows ${license.max_users_allowed} users, currently has ${license.current_users}.`;
+      }
+    }
+    
+    return res.json({
+      isValid,
+      status,
+      warningMessage,
+      errorMessage,
+      expiresIn,
+      currentUsers: license.current_users,
+      maxUsersAllowed: license.max_users_allowed
+    });
+    
+  } catch (err) {
+    return res.status(500).json({
+      message: `Error retrieving license status for id=${id}: ${err.message}`
+    });
+  }
+};
+
+// Generate a new license key
+exports.generateLicenseKey = async (req, res) => {
+  try {
+    const { productId, customerId, licenseType, licenseScope, expiryDate, maxUsersAllowed } = req.body;
+    
+    if (!productId || !customerId || !licenseType) {
+      return res.status(400).json({
+        message: "Product ID, Customer ID, and License Type are required"
+      });
+    }
+    
+    // Generate a unique license key
+    // Format: XXXX-XXXX-XXXX-XXXX (where X is alphanumeric)
+    const generateSegment = () => {
+      return crypto.randomBytes(2).toString('hex').toUpperCase();
+    };
+    
+    const licenseKey = `${generateSegment()}-${generateSegment()}-${generateSegment()}-${generateSegment()}`;
+    
+    // Create license object (similar to the create method)
+    const license = {
+      customer_id: customerId,
+      product_id: productId,
+      product_version_id: req.body.productVersionId || productId, // Default to product ID if version not specified
+      license_type: licenseType,
+      license_scope: licenseScope || 'local',
+      licensing_period: req.body.licensingPeriod || 365,
+      renewable_alert_message: req.body.renewableAlertMessage,
+      grace_period_days: req.body.gracePeriodDays || 0,
+      expiry_date: expiryDate,
+      max_users_allowed: maxUsersAllowed,
+      current_users: 0,
+      license_key: licenseKey // Add the generated license key
+    };
+    
+    // Save License in the database
+    const newLicense = await License.create(license);
+    
+    // Handle MAC addresses if provided
+    if (req.body.macAddresses && req.body.macAddresses.length > 0) {
+      const macAddresses = req.body.macAddresses.map(mac => ({
+        license_id: newLicense.id,
+        mac_address: mac
+      }));
+      
+      await db.licenseMacAddresses.bulkCreate(macAddresses);
+    }
+    
+    // Handle allowed countries if provided
+    if (req.body.allowedCountries && req.body.allowedCountries.length > 0) {
+      const countries = req.body.allowedCountries.map(country => ({
+        license_id: newLicense.id,
+        country_code: country
+      }));
+      
+      await db.licenseAllowedCountries.bulkCreate(countries);
+    }
+    
+    return res.status(201).json({
+      id: newLicense.id,
+      licenseKey,
+      message: "License created successfully with new license key"
+    });
+    
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Some error occurred while generating license key."
+    });
+  }
+};
+
+// Validate a license key from external system
+exports.validateLicenseKey = async (req, res) => {
+  try {
+    const { licenseKey, deviceInfo, macAddress, countryCode } = req.body;
+    
+    if (!licenseKey) {
+      return res.status(400).json({
+        message: "License key is required"
+      });
+    }
+    
+    // Find the license with the given key
+    const license = await License.findOne({
+      where: { license_key: licenseKey },
+      include: [
+        {
+          model: Customer,
+          as: "customer"
+        },
+        {
+          model: LicenseAllowedCountry,
+          as: "allowed_countries"
+        },
+        {
+          model: LicenseMacAddress,
+          as: "mac_addresses"
+        }
+      ]
+    });
+    
+    if (!license) {
+      return res.status(404).json({
+        isValid: false,
+        status: 'expired',
+        errorMessage: 'Invalid license key.'
+      });
+    }
+    
+    // Perform verification logic (similar to verifyLicense method)
+    let isValid = true;
+    let status = 'valid';
+    let warningMessage = null;
+    let errorMessage = null;
+    let expiresIn = null;
+
+    // Check if license has expired
+    if (license.expiry_date) {
+      const expiryDate = new Date(license.expiry_date);
+      const today = new Date();
+      
+      // Calculate days until expiry
+      const timeDiff = expiryDate.getTime() - today.getTime();
+      expiresIn = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      
+      if (expiryDate < today) {
+        // Check grace period
+        const gracePeriodDate = new Date(expiryDate);
+        gracePeriodDate.setDate(gracePeriodDate.getDate() + license.grace_period_days);
+        
+        if (today <= gracePeriodDate) {
+          status = 'warning';
+          warningMessage = `License has expired but is in grace period. Expires in ${license.grace_period_days - Math.ceil((today - expiryDate) / (1000 * 3600 * 24))} days.`;
+        } else {
+          isValid = false;
+          status = 'expired';
+          errorMessage = 'License has expired and grace period has ended.';
+        }
+      } else if (expiresIn <= 30) {
+        status = 'warning';
+        warningMessage = `License will expire in ${expiresIn} days.`;
+      }
+    }
+
+    // Check MAC address if license is mac_based or mixed
+    if ((license.license_type === 'mac_based' || license.license_type === 'mixed') && 
+        macAddress && license.mac_addresses && license.mac_addresses.length > 0) {
+      
+      const allowedMacs = license.mac_addresses.map(mac => mac.mac_address);
+      if (!allowedMacs.includes(macAddress)) {
+        isValid = false;
+        status = 'expired';
+        errorMessage = 'Device MAC address is not authorized to use this license.';
+      }
+    }
+
+    // Check country if license is country_based or mixed
+    if ((license.license_type === 'country_based' || license.license_type === 'mixed') && 
+        countryCode && license.allowed_countries && license.allowed_countries.length > 0) {
+      
+      const allowedCountries = license.allowed_countries.map(country => country.country_code);
+      if (!allowedCountries.includes(countryCode)) {
+        isValid = false;
+        status = 'expired';
+        errorMessage = 'This license is not valid in your country.';
+      }
+    }
+    
+    // Log the verification attempt
+    await db.licenseVerificationLogs.create({
+      license_id: license.id,
+      is_valid: isValid,
+      ip_address: req.ip,
+      mac_address: macAddress,
+      country_code: countryCode,
+      device_info: deviceInfo,
+      message: errorMessage || warningMessage
+    });
+    
+    return res.json({
+      isValid,
+      status,
+      warningMessage,
+      errorMessage,
+      expiresIn,
+      licenseId: license.id,
+      customerId: license.customer_id,
+      productId: license.product_id,
+      licenseType: license.license_type
+    });
+    
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Error occurred during license key validation."
+    });
+  }
+};
+
+// Get license by key
+exports.getLicenseByKey = async (req, res) => {
+  const key = req.params.key;
+  
+  try {
+    const license = await License.findOne({
+      where: { license_key: key },
+      include: [
+        {
+          model: Customer,
+          as: "customer"
+        },
+        {
+          model: LicenseAllowedCountry,
+          as: "allowed_countries"
+        },
+        {
+          model: LicenseMacAddress,
+          as: "mac_addresses"
+        }
+      ]
+    });
+    
+    if (license) {
+      const plainLicense = license.get({ plain: true });
+      const formattedLicense = {
+        ...plainLicense,
+        customerId: plainLicense.customer_id,
+        productId: plainLicense.product_id,
+        productVersionId: plainLicense.product_version_id,
+        licenseType: plainLicense.license_type,
+        licenseScope: plainLicense.license_scope,
+        licensingPeriod: plainLicense.licensing_period,
+        renewableAlertMessage: plainLicense.renewable_alert_message,
+        gracePeriodDays: plainLicense.grace_period_days,
+        expiryDate: plainLicense.expiry_date,
+        maxUsersAllowed: plainLicense.max_users_allowed,
+        currentUsers: plainLicense.current_users,
+        createdAt: plainLicense.created_at,
+        updatedAt: plainLicense.updated_at,
+        licenseKey: plainLicense.license_key,
+        allowedCountries: plainLicense.allowed_countries ? 
+          plainLicense.allowed_countries.map(country => country.country_code) : [],
+        macAddresses: plainLicense.mac_addresses ? 
+          plainLicense.mac_addresses.map(mac => mac.mac_address) : [],
+        customer: plainLicense.customer ? {
+          id: plainLicense.customer.id,
+          name: plainLicense.customer.name,
+          location: plainLicense.customer.location,
+          country: plainLicense.customer.country,
+          contact: plainLicense.customer.contact,
+          mobile: plainLicense.customer.mobile,
+          email: plainLicense.customer.email,
+          createdAt: plainLicense.customer.created_at,
+          updatedAt: plainLicense.customer.updated_at
+        } : null
+      };
+      
+      return res.json(formattedLicense);
+    } else {
+      return res.status(404).json({
+        message: `License with key=${key} was not found.`
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({
+      message: `Error retrieving License with key=${key}: ${err.message}`
     });
   }
 };

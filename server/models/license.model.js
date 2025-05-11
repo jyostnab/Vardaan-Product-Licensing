@@ -51,6 +51,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: 0
     },
+    license_key: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
