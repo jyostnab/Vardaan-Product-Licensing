@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { License } from "@/types/license";
 import { LicenseCard } from "./LicenseCard";

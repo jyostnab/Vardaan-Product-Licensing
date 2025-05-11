@@ -1,6 +1,6 @@
 
 import { License, LicenseVerificationResult } from "@/types/license";
-import { verifyLicense, getLicenseVerificationLogs, updateLicenseUserCount } from "@/services/directDatabaseService";
+import { verifyLicense, getLicenseVerificationLogs, updateUserCount } from "@/services/directDatabaseService";
 
 export class LicenseVerificationService {
   /**
@@ -84,7 +84,7 @@ export class LicenseVerificationService {
   static async updateUserCount(licenseId: string, increment: boolean = true): Promise<License> {
     try {
       // Call the API to update the user count
-      const updatedLicense = await updateLicenseUserCount(licenseId, increment);
+      const updatedLicense = await updateUserCount(licenseId, increment);
       return updatedLicense;
     } catch (error) {
       console.error("Error updating user count:", error);
