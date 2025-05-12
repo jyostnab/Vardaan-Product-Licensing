@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, RefreshCw, Database } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export function DatabaseConnectionCheck() {
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "success" | "error">("checking");
@@ -33,16 +34,30 @@ export function DatabaseConnectionCheck() {
         setConnectionStatus("success");
         setDbDetails(data);
         console.log("Database connection successful:", data);
+        toast({
+          title: "Database connected",
+          description: "Successfully connected to MySQL database",
+        });
       } else {
         setConnectionStatus("error");
         setErrorMessage(data.message || "Unknown error");
         setDbDetails(data.config || null);
         console.error("Connection check failed:", data);
+        toast({
+          title: "Database connection failed",
+          description: data.message || "Could not connect to database",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Connection check error:", error);
       setConnectionStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "Failed to connect to the database");
+      toast({
+        title: "Connection error",
+        description: "Could not reach the API server",
+        variant: "destructive",
+      });
     } finally {
       setIsChecking(false);
     }
@@ -85,7 +100,7 @@ export function DatabaseConnectionCheck() {
             <p className="mt-2">Please check:</p>
             <ul className="list-disc pl-5 mt-1">
               <li>MySQL server is running on your local system</li>
-              <li>Database credentials in .env file are correct</li>
+              <li>Database credentials in .env file are correct (user: root, password: root_123)</li>
               <li>Database <strong>"{dbDetails?.database || import.meta.env.VITE_DB_NAME || 'vardaan_licensing'}"</strong> exists on <strong>{dbDetails?.host || 'localhost'}</strong></li>
               <li>Server is running on port 8080</li>
               <li>API URL is configured correctly: {apiUrl || import.meta.env.VITE_API_URL}</li>
@@ -99,8 +114,8 @@ export function DatabaseConnectionCheck() {
                     CREATE DATABASE vardaan_licensing;
                   </pre>
                 </li>
-                <li>Check .env file has correct database credentials</li>
-                <li>Restart the server</li>
+                <li>We've updated .env file with credentials: root/root_123</li>
+                <li>Restart the server after making these changes</li>
               </ol>
             </div>
             <Button 

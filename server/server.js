@@ -27,13 +27,14 @@ async function initializeDatabase() {
     console.log("Attempting to connect to MySQL server...");
     console.log(`Host: ${process.env.DB_HOST || "localhost"}`);
     console.log(`User: ${process.env.DB_USER || "root"}`);
+    console.log(`Password: ${process.env.DB_PASSWORD ? '[PROVIDED]' : '[NOT PROVIDED]'}`);
     console.log(`Database name: ${process.env.DB_NAME || "vardaan_licensing"}`);
     
     // Create connection to MySQL server without specifying database
     const connection = await mysql.createConnection({
       host: process.env.DB_HOST || "localhost",
       user: process.env.DB_USER || "root",
-      password: process.env.DB_PASSWORD || ""
+      password: process.env.DB_PASSWORD || "root_123"
     });
     
     console.log("Connected to MySQL server successfully");
@@ -46,6 +47,12 @@ async function initializeDatabase() {
     return true;
   } catch (err) {
     console.error("Error initializing database:", err);
+    console.error("MySQL Connection Error Details:", {
+      code: err.code,
+      errno: err.errno,
+      sqlState: err.sqlState,
+      sqlMessage: err.sqlMessage
+    });
     return false;
   }
 }
@@ -97,6 +104,12 @@ app.get("/api/check-connection", async (req, res) => {
     });
   } catch (error) {
     console.error("Database connection error:", error);
+    console.error("Connection details:", {
+      host: process.env.DB_HOST || "localhost",
+      user: process.env.DB_USER || "root",
+      database: process.env.DB_NAME || "vardaan_licensing"
+    });
+    
     res.status(500).json({ 
       success: false, 
       message: "Database connection failed", 
@@ -133,4 +146,5 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
   console.log(`API URL: http://localhost:${PORT}/api`);
   console.log(`Database: ${process.env.DB_NAME || "vardaan_licensing"} on ${process.env.DB_HOST || "localhost"}`);
+  console.log(`Using credentials: ${process.env.DB_USER || "root"} / [PASSWORD]`);
 });
