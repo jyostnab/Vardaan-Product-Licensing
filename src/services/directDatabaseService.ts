@@ -1,3 +1,4 @@
+
 import type { Customer, License, Product, ProductVersion, LicenseVerificationResult } from "@/types/license";
 
 // API base URL
@@ -5,23 +6,32 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
 // Helper function for API requests
 async function apiRequest(endpoint: string, method: string = 'GET', data?: any) {
-  const options: RequestInit = {
-    method,
-    headers: {
-      'Content-Type': 'application/json'
+  try {
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
+
+    if (data) {
+      options.body = JSON.stringify(data);
     }
-  };
 
-  if (data) {
-    options.body = JSON.stringify(data);
+    console.log(`Making ${method} request to ${API_BASE_URL}/${endpoint}`);
+    const response = await fetch(`${API_BASE_URL}/${endpoint}`, options);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API request failed: ${response.status} ${errorText}`);
+      throw new Error(`API request failed: ${response.status} ${errorText}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error(`API request error for ${endpoint}:`, error);
+    throw error;
   }
-
-  const response = await fetch(`${API_BASE_URL}/${endpoint}`, options);
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API request failed: ${response.status} ${errorText}`);
-  }
-  return response.json();
 }
 
 // Product Services

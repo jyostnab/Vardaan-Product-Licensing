@@ -8,6 +8,7 @@ export function DatabaseConnectionCheck() {
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "success" | "error">("checking");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isChecking, setIsChecking] = useState(false);
+  const [apiUrl, setApiUrl] = useState("");
 
   const checkConnection = async () => {
     setIsChecking(true);
@@ -16,6 +17,7 @@ export function DatabaseConnectionCheck() {
     try {
       // Use API endpoint to check DB connection instead of direct connection
       const apiUrl = `${import.meta.env.VITE_API_URL}/check-connection`;
+      setApiUrl(apiUrl);
       console.log("Checking connection with:", apiUrl);
       
       const response = await fetch(apiUrl);
@@ -23,9 +25,11 @@ export function DatabaseConnectionCheck() {
       
       if (data.success) {
         setConnectionStatus("success");
+        console.log("Database connection successful:", data);
       } else {
         setConnectionStatus("error");
         setErrorMessage(data.message || "Unknown error");
+        console.error("Connection check failed:", data);
       }
     } catch (error) {
       console.error("Connection check error:", error);
@@ -46,6 +50,7 @@ export function DatabaseConnectionCheck() {
         <Alert className="bg-muted">
           <RefreshCw className="h-4 w-4 animate-spin mr-2" />
           <AlertTitle>Checking database connection...</AlertTitle>
+          <AlertDescription>Connecting to {apiUrl || "API"}</AlertDescription>
         </Alert>
       ) : connectionStatus === "success" ? (
         <Alert className="bg-green-50 border-green-200">
@@ -67,6 +72,7 @@ export function DatabaseConnectionCheck() {
               <li>Database credentials in .env file are correct</li>
               <li>Database "{import.meta.env.VITE_DB_NAME}" exists</li>
               <li>Server is running on port 8080</li>
+              <li>API URL is configured correctly: {apiUrl || import.meta.env.VITE_API_URL}</li>
             </ul>
             <Button 
               variant="outline" 
