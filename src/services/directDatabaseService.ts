@@ -85,10 +85,38 @@ export const fetchProductVersions = async (): Promise<ProductVersion[]> => {
   }
 };
 
+export const fetchProductVersionsByProductId = async (productId: string): Promise<ProductVersion[]> => {
+  try {
+    const data = await apiRequest(`productVersions/by-product/${productId}`);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching product versions for product ${productId}:`, error);
+    throw error;
+  }
+};
+
 export const createProductVersion = async (version: Omit<ProductVersion, "id" | "createdAt" | "updatedAt">): Promise<ProductVersion> => {
   try {
-    const data = await apiRequest('productVersions', 'POST', version);
-    return data;
+    // Map the frontend model to the backend model
+    const versionData = {
+      product_id: version.productId,
+      version: version.version,
+      release_date: new Date(version.releaseDate),
+      notes: version.notes
+    };
+    
+    const data = await apiRequest('productVersions', 'POST', versionData);
+    
+    // Map the response back to the frontend model format
+    return {
+      id: data.id,
+      productId: data.product_id,
+      version: data.version,
+      releaseDate: new Date(data.release_date),
+      notes: data.notes || "",
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
   } catch (error) {
     console.error("Error creating product version:", error);
     throw error;
@@ -97,8 +125,20 @@ export const createProductVersion = async (version: Omit<ProductVersion, "id" | 
 
 export const updateProductVersion = async (id: string, version: Partial<ProductVersion>): Promise<ProductVersion> => {
   try {
-    const data = await apiRequest(`productVersions/${id}`, 'PUT', version);
-    return data.data;
+    // Map the frontend model to the backend model for update
+    const versionData: any = {};
+    if (version.version) versionData.version = version.version;
+    if (version.releaseDate) versionData.release_date = new Date(version.releaseDate);
+    if (version.notes !== undefined) versionData.notes = version.notes;
+    
+    const data = await apiRequest(`productVersions/${id}`, 'PUT', versionData);
+    
+    // Return expected format even though the API might return { message: "..." }
+    return {
+      id,
+      ...(version as any), // Include the partial updates
+      updatedAt: new Date()
+    };
   } catch (error) {
     console.error("Error updating product version:", error);
     throw error;

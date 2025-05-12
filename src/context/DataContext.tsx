@@ -67,17 +67,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         fetchLicenses()
       ]);
 
+      // Map backend data model to frontend model if necessary
+      const mappedVersions = versionsData.map((v: any) => ({
+        id: v.id,
+        productId: v.product_id,
+        version: v.version,
+        releaseDate: new Date(v.release_date),
+        notes: v.notes || "",
+        createdAt: new Date(v.created_at),
+        updatedAt: new Date(v.updated_at)
+      }));
+
       // Link versions to products
-      const productsWithVersions = productsData.map(product => {
-        const productVersionsList = versionsData.filter(v => v.productId === product.id);
+      const productsWithVersions = productsData.map((product: any) => {
+        const productVersionsList = mappedVersions.filter(v => v.productId === product.id);
         return {
-          ...product,
-          versions: productVersionsList
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          versions: productVersionsList,
+          createdAt: new Date(product.created_at),
+          updatedAt: new Date(product.updated_at)
         };
       });
 
       setProducts(productsWithVersions);
-      setProductVersions(versionsData);
+      setProductVersions(mappedVersions);
       setCustomers(customersData);
       setLicenses(licensesData);
     } catch (error) {

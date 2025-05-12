@@ -43,6 +43,23 @@ exports.findAll = async (req, res) => {
   }
 };
 
+// Find ProductVersions by product_id
+exports.findByProductId = async (req, res) => {
+  const productId = req.params.productId;
+
+  try {
+    const data = await ProductVersion.findAll({
+      where: { product_id: productId }
+    });
+    
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({
+      message: `Error retrieving ProductVersions for product id=${productId}: ${err.message}`
+    });
+  }
+};
+
 // Find a single ProductVersion with an id
 exports.findOne = async (req, res) => {
   const id = req.params.id;
