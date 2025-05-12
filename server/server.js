@@ -12,7 +12,9 @@ const app = express();
 
 // Configure CORS
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || "*"
+  origin: process.env.CLIENT_ORIGIN || "*",
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Parse requests of content-type - application/json

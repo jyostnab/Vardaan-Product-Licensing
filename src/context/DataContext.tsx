@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { Customer, License, Product, ProductVersion } from "@/types/license";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -51,24 +51,48 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [licenses, setLicenses] = useState<License[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load data from Supabase when the component mounts
+  // Load data from API when the component mounts
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Load all data in parallel
-      const [productsData, versionsData, customersData, licensesData] = await Promise.all([
-        fetchProducts(),
-        fetchProductVersions(),
-        fetchCustomers(),
-        fetchLicenses()
-      ]);
+      // Load product data
+      const productsData = await fetchProducts().catch(err => {
+        console.error("Error fetching products:", err);
+        return [];
+      });
+      
+      // Load versions data with error handling
+      let versionsData = [];
+      try {
+        versionsData = await fetchProductVersions();
+      } catch (err) {
+        console.error("Error fetching product versions:", err);
+        // If 404, it might be that the route doesn't exist yet
+        toast({
+          title: "Product versions API not available",
+          description: "The product versions API endpoint may not be set up yet.",
+          variant: "destructive"
+        });
+      }
+      
+      // Load customer data with error handling
+      const customersData = await fetchCustomers().catch(err => {
+        console.error("Error fetching customers:", err);
+        return [];
+      });
+      
+      // Load license data with error handling
+      const licensesData = await fetchLicenses().catch(err => {
+        console.error("Error fetching licenses:", err);
+        return [];
+      });
 
       // Map backend data model to frontend model if necessary
-      const mappedVersions = versionsData.map((v: any) => ({
+      const mappedVersions = (versionsData || []).map((v: any) => ({
         id: v.id,
         productId: v.product_id,
         version: v.version,
@@ -95,17 +119,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setProductVersions(mappedVersions);
       setCustomers(customersData);
       setLicenses(licensesData);
+      
+      console.log("Data loaded successfully:", {
+        products: productsWithVersions.length,
+        versions: mappedVersions.length,
+        customers: customersData.length,
+        licenses: licensesData.length
+      });
+      
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
         title: "Error loading data",
-        description: "Failed to load data from the database. Please try again.",
+        description: "Failed to load data from the database. Please check your connection.",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const refreshData = async () => {
     await loadData();

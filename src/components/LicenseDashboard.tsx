@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useMemo } from "react";
 import { License } from "@/types/license";
 import { LicenseCard } from "./LicenseCard";
 import { LicenseVerificationModal } from "./LicenseVerificationModal";
@@ -28,14 +29,17 @@ export function LicenseDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "expiring">("newest");
 
-  // Process licenses to include customer data
-  const licensesWithCustomer = licenses.map(license => {
-    const customer = customers.find(c => c.id === license.customerId) || license.customer;
-    return { ...license, customer };
-  });
+  // Process licenses to include customer data - done with useMemo to prevent infinite loops
+  const licensesWithCustomer = useMemo(() => {
+    return licenses.map(license => {
+      const customer = customers.find(c => c.id === license.customerId) || license.customer;
+      return { ...license, customer };
+    });
+  }, [licenses, customers]);
 
+  // Filter and sort licenses with useMemo to prevent unnecessary recalculations
   useEffect(() => {
-    let filtered = licensesWithCustomer;
+    let filtered = [...licensesWithCustomer];
     
     // Apply search filter
     if (searchQuery) {
@@ -69,7 +73,7 @@ export function LicenseDashboard() {
     });
     
     setFilteredLicenses(filtered);
-  }, [licenses, customers, activeTab, searchQuery, sortBy, licensesWithCustomer]);
+  }, [licensesWithCustomer, activeTab, searchQuery, sortBy]);
 
   const handleLicenseClick = (license: License) => {
     setSelectedLicense(license);

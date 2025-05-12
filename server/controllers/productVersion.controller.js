@@ -1,61 +1,45 @@
 
 const db = require("../models");
 const ProductVersion = db.productVersions;
+const Product = db.products;
+const { Op } = require("sequelize");
 
 // Create and Save a new ProductVersion
 exports.create = async (req, res) => {
   try {
     // Validate request
-    if (!req.body.version || !req.body.product_id || !req.body.release_date) {
-      return res.status(400).json({ message: "Version, product_id, and release date are required" });
+    if (!req.body.product_id || !req.body.version || !req.body.release_date) {
+      return res.status(400).json({ 
+        message: "Product ID, version and release date are required" 
+      });
     }
 
     // Create a ProductVersion
     const productVersion = {
       product_id: req.body.product_id,
       version: req.body.version,
-      release_date: new Date(req.body.release_date),
+      release_date: req.body.release_date,
       notes: req.body.notes
     };
 
     // Save ProductVersion in the database
     const data = await ProductVersion.create(productVersion);
-    return res.status(201).json(data);
+    res.status(201).json(data);
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       message: err.message || "Some error occurred while creating the Product Version."
     });
   }
 };
 
-// Retrieve all ProductVersions from the database (with optional product_id filter)
+// Retrieve all ProductVersions from the database
 exports.findAll = async (req, res) => {
-  const product_id = req.query.product_id;
-  const condition = product_id ? { product_id: product_id } : null;
-
   try {
-    const data = await ProductVersion.findAll({ where: condition });
-    return res.json(data);
+    const data = await ProductVersion.findAll();
+    res.json(data);
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       message: err.message || "Some error occurred while retrieving product versions."
-    });
-  }
-};
-
-// Find ProductVersions by product_id
-exports.findByProductId = async (req, res) => {
-  const productId = req.params.productId;
-
-  try {
-    const data = await ProductVersion.findAll({
-      where: { product_id: productId }
-    });
-    
-    return res.json(data);
-  } catch (err) {
-    return res.status(500).json({
-      message: `Error retrieving ProductVersions for product id=${productId}: ${err.message}`
     });
   }
 };
@@ -67,15 +51,31 @@ exports.findOne = async (req, res) => {
   try {
     const data = await ProductVersion.findByPk(id);
     if (data) {
-      return res.json(data);
+      res.json(data);
     } else {
-      return res.status(404).json({
-        message: `ProductVersion with id=${id} was not found.`
+      res.status(404).json({
+        message: `Cannot find Product Version with id=${id}.`
       });
     }
   } catch (err) {
-    return res.status(500).json({
-      message: `Error retrieving ProductVersion with id=${id}`
+    res.status(500).json({
+      message: `Error retrieving Product Version with id=${id}.`
+    });
+  }
+};
+
+// Find ProductVersions by product id
+exports.findByProductId = async (req, res) => {
+  const productId = req.params.productId;
+
+  try {
+    const data = await ProductVersion.findAll({
+      where: { product_id: productId }
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message || `Error retrieving Product Versions for product id=${productId}.`
     });
   }
 };
@@ -89,23 +89,23 @@ exports.update = async (req, res) => {
       where: { id: id }
     });
 
-    if (num == 1) {
-      return res.json({
-        message: "ProductVersion was updated successfully."
+    if (num[0] === 1) {
+      res.json({
+        message: "Product Version was updated successfully."
       });
     } else {
-      return res.status(404).json({
-        message: `Cannot update ProductVersion with id=${id}. Maybe ProductVersion was not found or req.body is empty!`
+      res.status(404).json({
+        message: `Cannot update Product Version with id=${id}. Maybe Product Version was not found or req.body is empty!`
       });
     }
   } catch (err) {
-    return res.status(500).json({
-      message: `Error updating ProductVersion with id=${id}`
+    res.status(500).json({
+      message: `Error updating Product Version with id=${id}.`
     });
   }
 };
 
-// Delete a ProductVersion with the specified id in the request
+// Delete a ProductVersion with the specified id
 exports.delete = async (req, res) => {
   const id = req.params.id;
 
@@ -114,18 +114,18 @@ exports.delete = async (req, res) => {
       where: { id: id }
     });
 
-    if (num == 1) {
-      return res.json({
-        message: "ProductVersion was deleted successfully!"
+    if (num === 1) {
+      res.json({
+        message: "Product Version was deleted successfully!"
       });
     } else {
-      return res.status(404).json({
-        message: `Cannot delete ProductVersion with id=${id}. Maybe ProductVersion was not found!`
+      res.status(404).json({
+        message: `Cannot delete Product Version with id=${id}. Maybe Product Version was not found!`
       });
     }
   } catch (err) {
-    return res.status(500).json({
-      message: `Could not delete ProductVersion with id=${id}`
+    res.status(500).json({
+      message: `Could not delete Product Version with id=${id}.`
     });
   }
 };
