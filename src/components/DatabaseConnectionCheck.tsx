@@ -2,11 +2,12 @@
 import { useState, useEffect } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, RefreshCw, Database } from "lucide-react";
 
 export function DatabaseConnectionCheck() {
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "success" | "error">("checking");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [dbDetails, setDbDetails] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [apiUrl, setApiUrl] = useState("");
 
@@ -21,14 +22,21 @@ export function DatabaseConnectionCheck() {
       console.log("Checking connection with:", apiUrl);
       
       const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setConnectionStatus("success");
+        setDbDetails(data);
         console.log("Database connection successful:", data);
       } else {
         setConnectionStatus("error");
         setErrorMessage(data.message || "Unknown error");
+        setDbDetails(data.config || null);
         console.error("Connection check failed:", data);
       }
     } catch (error) {
@@ -57,7 +65,15 @@ export function DatabaseConnectionCheck() {
           <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
           <AlertTitle className="text-green-700">Database connection successful</AlertTitle>
           <AlertDescription className="text-green-600 mt-2">
-            Your application is properly connected to the MySQL database.
+            <p>Your application is properly connected to the MySQL database:</p>
+            {dbDetails && (
+              <div className="mt-1 text-sm bg-green-100 p-2 rounded flex items-center">
+                <Database className="h-3 w-3 mr-1" />
+                <span>
+                  Connected to database <strong>{dbDetails.database}</strong> on host <strong>{dbDetails.host}</strong>
+                </span>
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       ) : (
@@ -68,12 +84,25 @@ export function DatabaseConnectionCheck() {
             <p>Error: {errorMessage}</p>
             <p className="mt-2">Please check:</p>
             <ul className="list-disc pl-5 mt-1">
-              <li>MySQL server is running</li>
+              <li>MySQL server is running on your local system</li>
               <li>Database credentials in .env file are correct</li>
-              <li>Database "{import.meta.env.VITE_DB_NAME}" exists</li>
+              <li>Database <strong>"{dbDetails?.database || import.meta.env.VITE_DB_NAME || 'vardaan_licensing'}"</strong> exists on <strong>{dbDetails?.host || 'localhost'}</strong></li>
               <li>Server is running on port 8080</li>
               <li>API URL is configured correctly: {apiUrl || import.meta.env.VITE_API_URL}</li>
             </ul>
+            <div className="mt-3 p-2 bg-red-100 rounded text-sm">
+              <strong>Database Setup:</strong>
+              <ol className="list-decimal pl-5 mt-1">
+                <li>Make sure MySQL is installed and running on your computer</li>
+                <li>Create a database named "vardaan_licensing" if it doesn't exist:
+                  <pre className="bg-slate-800 text-white p-2 mt-1 rounded text-xs overflow-x-auto">
+                    CREATE DATABASE vardaan_licensing;
+                  </pre>
+                </li>
+                <li>Check .env file has correct database credentials</li>
+                <li>Restart the server</li>
+              </ol>
+            </div>
             <Button 
               variant="outline" 
               size="sm" 
