@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,6 +64,11 @@ export function CreateLicenseForm() {
       licensingPeriod: 365,
       renewableAlertMessage: "Your license will expire soon. Please contact your administrator to renew.",
       gracePeriodDays: 14,
+      expiryDate: "",
+      maxUsersAllowed: 0,
+      currentUsers: 0,
+      macAddresses: "",
+      allowedCountries: ""
     }
   });
   
@@ -88,7 +92,8 @@ export function CreateLicenseForm() {
     setIsMacBased(licenseTypes.includes("mac_based"));
     setIsCountryBased(licenseTypes.includes("country_based"));
     
-    form.setValue("licenseType", type);
+    // Set the licenseType field directly
+    form.setValue("licenseType", licenseTypes.length > 0 ? licenseTypes.join(',') : "");
   };
   
   // Handle MAC addresses
@@ -123,8 +128,10 @@ export function CreateLicenseForm() {
     form.setValue("allowedCountries", updatedCountries.join(','));
   };
   
-  const onSubmit = (data: z.infer<typeof licenseFormSchema>) => {
-    // Create license type based on selections
+  const onSubmit = async (data: z.infer<typeof licenseFormSchema>) => {
+    console.log("Form values:", data);
+    
+    // Ensure license type is properly set
     let licenseType: LicenseType = "mixed";
     if (isDateBased && !isUserCountBased && !isMacBased && !isCountryBased) {
       licenseType = "date_based";
@@ -136,6 +143,7 @@ export function CreateLicenseForm() {
       licenseType = "country_based";
     }
     
+    // Create complete license object with all required fields
     const license: Omit<License, "id" | "createdAt" | "updatedAt"> = {
       customerId: data.customerId,
       productId: data.productId,
@@ -146,7 +154,7 @@ export function CreateLicenseForm() {
       renewableAlertMessage: data.renewableAlertMessage,
       gracePeriodDays: data.gracePeriodDays,
     };
-
+    
     // Add optional fields based on license type
     if (isDateBased && data.expiryDate) {
       license.expiryDate = new Date(data.expiryDate);
@@ -165,22 +173,32 @@ export function CreateLicenseForm() {
       license.allowedCountries = allowedCountries;
     }
     
-    // Add license
-    addLicense(license);
+    console.log("License being submitted:", license);
     
-    toast({
-      title: "License created successfully",
-      description: `A new license has been created for the selected customer and product.`
-    });
-    
-    // Reset form
-    form.reset();
-    setMacAddresses([]);
-    setAllowedCountries([]);
-    setIsDateBased(false);
-    setIsUserCountBased(false);
-    setIsMacBased(false);
-    setIsCountryBased(false);
+    try {
+      await addLicense(license);
+      toast({
+        title: "Success",
+        description: "License created successfully"
+      });
+      // Only reset form on success
+      form.reset();
+      // Reset other state
+      setMacAddresses([]);
+      setAllowedCountries([]);
+      setIsDateBased(false);
+      setIsUserCountBased(false);
+      setIsMacBased(false);
+      setIsCountryBased(false);
+    } catch (error) {
+      console.error("License creation failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create license",
+        variant: "destructive"
+      });
+      // Don't reset form on error
+    }
   };
 
   return (
@@ -348,6 +366,7 @@ export function CreateLicenseForm() {
                     Date based
                   </label>
                 </div>
+                
                 <div className="flex items-center space-x-3">
                   <Checkbox 
                     id="type-user"
@@ -369,6 +388,7 @@ export function CreateLicenseForm() {
                     User count based
                   </label>
                 </div>
+                
                 <div className="flex items-center space-x-3">
                   <Checkbox 
                     id="type-mac"
@@ -390,6 +410,7 @@ export function CreateLicenseForm() {
                     MAC based
                   </label>
                 </div>
+                
                 <div className="flex items-center space-x-3">
                   <Checkbox 
                     id="type-country"
@@ -413,8 +434,26 @@ export function CreateLicenseForm() {
                 </div>
               </div>
               
+              {/* Hidden field to bind licenseType with form */}
+              <FormField
+                control={form.control}
+                name="licenseType"
+                render={({ field }) => (
+                  <FormItem className="hidden">
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
               {(!isDateBased && !isUserCountBased && !isMacBased && !isCountryBased) && (
                 <p className="text-sm text-destructive">Please select at least one license type</p>
+              )}
+              
+              {form.formState.errors.licenseType && (
+                <p className="text-sm text-destructive">{form.formState.errors.licenseType.message}</p>
               )}
             </div>
             
@@ -472,7 +511,13 @@ export function CreateLicenseForm() {
                   <FormItem>
                     <FormLabel>Expiry Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input 
+                        type="date" 
+                        value={field.value || ""}  
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        ref={field.ref} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -490,7 +535,13 @@ export function CreateLicenseForm() {
                     <FormItem>
                       <FormLabel>Maximum Users Allowed</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input 
+                          type="number" 
+                          value={field.value || 0}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -504,7 +555,13 @@ export function CreateLicenseForm() {
                     <FormItem>
                       <FormLabel>Current Users</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input 
+                          type="number" 
+                          value={field.value || 0}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

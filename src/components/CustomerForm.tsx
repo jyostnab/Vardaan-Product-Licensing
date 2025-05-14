@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,9 +25,9 @@ import { Plus } from "lucide-react";
 import { useData } from "@/context/DataContext";
 
 const customerSchema = z.object({
-  name: z.string().min(1, "Customer name is required"),
+  name: z.string().min(1, "Name is required"),
   location: z.string().min(1, "Location is required"),
-  country: z.string().min(2, "Country code is required").max(2, "Use 2-letter country code"),
+  country: z.string().length(2, "Country code must be 2 characters").toUpperCase(),
   contact: z.string().min(1, "Contact name is required"),
   mobile: z.string().min(1, "Mobile number is required"),
   email: z.string().email("Invalid email address")
@@ -50,24 +49,31 @@ export function CustomerForm({ onSuccess }: { onSuccess?: () => void }) {
     }
   });
 
-  function onSubmit(data: z.infer<typeof customerSchema>) {
-    // Since we're using zod validation, we can be confident all required fields are present
-    addCustomer({
-      name: data.name,
-      location: data.location,
-      country: data.country,
-      contact: data.contact,
-      mobile: data.mobile,
-      email: data.email
-    });
+  async function onSubmit(data: z.infer<typeof customerSchema>) {
+    // Transform country code to uppercase
+    const formattedData = {
+      ...data,
+      country: data.country.toUpperCase()
+    };
     
-    toast({
-      title: "Customer added",
-      description: `${data.name} has been added successfully.`
-    });
-    form.reset();
-    setOpen(false);
-    if (onSuccess) onSuccess();
+    console.log("Submitting customer data:", formattedData);
+    
+    try {
+      await addCustomer(formattedData);
+      toast({
+        title: "Customer added",
+        description: `${data.name} has been added successfully.`
+      });
+      form.reset();
+      setOpen(false);
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error("Customer creation error:", error);
+      toast({
+        title: "Customer addition error",
+        description: "An error occurred while adding the customer. Please try again later."
+      });
+    }
   }
 
   return (

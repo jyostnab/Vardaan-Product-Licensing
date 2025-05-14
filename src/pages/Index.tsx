@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LicenseDashboard } from "@/components/LicenseDashboard";
@@ -7,7 +6,8 @@ import { ProductsTab } from "@/components/ProductsTab";
 import { CreateLicenseForm } from "@/components/CreateLicenseForm";
 import { DatabaseSchemaGuide } from "@/components/DatabaseSchemaGuide";
 import { DatabaseConnectionCheck } from "@/components/DatabaseConnectionCheck";
-import { Shield, Terminal, Package, FileText, Database, LayoutDashboard } from "lucide-react";
+import { AICADEMYSimulator } from "@/components/AICADEMYSimulator";
+import { Shield, Terminal, Package, FileText, Database, LayoutDashboard, Rocket } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -30,7 +30,7 @@ const Index = () => {
         <DatabaseConnectionCheck />
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8 rounded-xl overflow-hidden shadow-sm">
+          <TabsList className="grid w-full grid-cols-6 mb-8 rounded-xl overflow-hidden shadow-sm">
             <TabsTrigger value="dashboard" className="text-base py-3 data-[state=active]:shadow-md">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
@@ -46,6 +46,10 @@ const Index = () => {
             <TabsTrigger value="demo" className="text-base py-3 data-[state=active]:shadow-md">
               <Terminal className="h-4 w-4 mr-2" />
               Login Demo
+            </TabsTrigger>
+            <TabsTrigger value="simulator" className="text-base py-3 data-[state=active]:shadow-md">
+              <Rocket className="h-4 w-4 mr-2" />
+              AICADEMY
             </TabsTrigger>
             <TabsTrigger value="database" className="text-base py-3 data-[state=active]:shadow-md">
               <Database className="h-4 w-4 mr-2" />
@@ -63,6 +67,9 @@ const Index = () => {
           </TabsContent>
           <TabsContent value="demo">
             <LicenseLoginDemo />
+          </TabsContent>
+          <TabsContent value="simulator">
+            <AICADEMYSimulator />
           </TabsContent>
           <TabsContent value="database">
             <DatabaseSchemaGuide />

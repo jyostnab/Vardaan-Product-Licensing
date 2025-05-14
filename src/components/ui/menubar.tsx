@@ -1,6 +1,8 @@
 import * as React from "react"
 import * as MenubarPrimitive from "@radix-ui/react-menubar"
 import { Check, ChevronRight, Circle } from "lucide-react"
+import { useState, useEffect } from "react"
+import { toast } from "@/components/ui/use-toast"
 
 import { cn } from "@/lib/utils"
 
@@ -213,6 +215,233 @@ const MenubarShortcut = ({
   )
 }
 MenubarShortcut.displayname = "MenubarShortcut"
+
+// Customer state
+const [availableCustomers, setAvailableCustomers] = useState<Array<{id: string, name: string, email: string}>>([]);
+const [selectedCustomerId, setSelectedCustomerId] = useState("");
+
+// Simulation state
+const [simulatedCustomerId, setSimulatedCustomerId] = useState("");
+
+useEffect(() => {
+  const fetchAllData = async () => {
+    try {
+      // Fetch customers first
+      const customers = await fetchCustomers();
+      console.log("Fetched customers from database:", customers);
+      setAvailableCustomers(customers);
+      
+      if (customers.length > 0) {
+        setSelectedCustomerId(customers[0].id);
+        setSimulatedCustomerId(customers[0].id);
+      }
+      
+      // Then fetch products
+      const products = await fetchProducts();
+      console.log("Fetched products from database:", products);
+      setAvailableProducts(products);
+      
+      // Set default product and fetch versions
+      if (products.length > 0) {
+        setSimulatedProductName(products[0].name);
+        setProductId(products[0].id);
+        await updateProductVersions(products[0].id);
+      }
+      
+      // Then fetch available licenses for the selected customer
+      if (customers.length > 0 && products.length > 0) {
+        await fetchCustomerLicenses(customers[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching initial data:", error);
+      toast({
+        title: "Data Loading Error",
+        description: "Could not load data from the database",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  fetchAllData();
+}, []);
+
+const fetchCustomerLicenses = async (customerId: string) => {
+  try {
+    // This would call your API endpoint for customer-specific licenses
+    const customerLicenses = await fetchLicensesByCustomerId(customerId);
+    
+    // If customer has licenses, select the first one by default
+    if (customerLicenses.length > 0) {
+      setLicenseId(customerLicenses[0].id);
+      
+      // Check if the license matches the currently selected product
+      const matchingLicense = customerLicenses.find(license => 
+        license.productId === productId
+      );
+      
+      if (matchingLicense) {
+        setLicenseId(matchingLicense.id);
+      }
+    }
+    
+    return customerLicenses;
+  } catch (error) {
+    console.error(`Error fetching licenses for customer ${customerId}:`, error);
+    return [];
+  }
+};
+
+const handleCustomerSelect = async (customerId: string) => {
+  setSelectedCustomerId(customerId);
+  
+  // Update available licenses for this customer
+  await fetchCustomerLicenses(customerId);
+};
+
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsVerifying(true);
+  setVerificationResult(null);
+  
+  try {
+    // Check if customer exists
+    const customer = availableCustomers.find(c => c.id === selectedCustomerId);
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+    
+    // Find the customer's license for the selected product
+    const license = licenses.find(l => 
+      l.customerId === selectedCustomerId && 
+      l.productId === productId
+    );
+    
+    if (!license) {
+      setVerificationResult({
+        license: {} as License, // TypeScript placeholder
+        success: false,
+        message: `Customer ${customer.name} does not have a license for this product`,
+        status: "error",
+        canAccessProduct: false
+      });
+      
+      toast({
+        title: "License Error",
+        description: `Customer ${customer.name} does not have a license for this product`,
+        variant: "destructive"
+      });
+      
+      return;
+    }
+    
+    // Continue with existing verification logic using the found license
+    // ...
+  } catch (error) {
+    // Error handling
+  } finally {
+    setIsVerifying(false);
+  }
+};
+
+const handleSimulateProduct = async () => {
+  if (!simulatedCustomerId) {
+    toast({
+      title: "Error",
+      description: "Please select a customer",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setIsVerifying(true);
+  setSimulationActive(true);
+  setSimulationResult(null);
+  
+  try {
+    const customer = availableCustomers.find(c => c.id === simulatedCustomerId);
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+    
+    // Find product ID from name
+    const product = availableProducts.find(p => p.name === simulatedProductName);
+    if (!product) {
+      throw new Error("Product not found");
+    }
+    
+    // Find the customer's license for the selected product
+    const license = licenses.find(l => 
+      l.customerId === simulatedCustomerId && 
+      l.productId === product.id
+    );
+    
+    if (!license) {
+      setSimulationResult({
+        success: false,
+        message: `Customer ${customer.name} does not have a license for ${simulatedProductName}`,
+        details: [
+          `Customer: ${customer.name}`,
+          `Product: ${simulatedProductName}`,
+          `Result: No valid license found`
+        ]
+      });
+      return;
+    }
+    
+    // Convert the simulated date to a Date object for comparison
+    const simulationDateObj = new Date(simulatedDate);
+    
+    // Check if license has expired based on simulated date
+    if (license.expiryDate && simulationDateObj > new Date(license.expiryDate)) {
+      setSimulationResult({
+        success: false,
+        message: "Product license has expired",
+        details: [
+          `Customer: ${customer.name}`,
+          `Simulated date: ${simulationDateObj.toLocaleDateString()}`,
+          `License expiry: ${new Date(license.expiryDate).toLocaleDateString()}`
+        ]
+      });
+      return;
+    }
+    
+    // Continue with existing verification checks (MAC address, country, etc.)
+    // ...
+    
+    // Check if product version is allowed
+    const isVersionAllowed = true; // Implement your version verification logic here
+    
+    if (!isVersionAllowed) {
+      setSimulationResult({
+        success: false,
+        message: `This license does not allow access to version ${simulatedProductVersion}`,
+        details: [
+          `Customer: ${customer.name}`,
+          `Product: ${simulatedProductName}`,
+          `Requested version: ${simulatedProductVersion}`,
+          `License allows: [list of allowed versions]`
+        ]
+      });
+      return;
+    }
+    
+    // If all checks pass, show success
+    setSimulationResult({
+      success: true,
+      message: "Product launched successfully with valid license",
+      details: [
+        `Customer: ${customer.name}`,
+        `Product: ${simulatedProductName} ${simulatedProductVersion}`,
+        `License ID: ${license.id}`,
+        `License type: ${license.licenseType}`
+      ]
+    });
+  } catch (error) {
+    // Error handling
+  } finally {
+    setIsVerifying(false);
+  }
+};
 
 export {
   Menubar,

@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -12,7 +11,7 @@ const app = express();
 
 // Configure CORS
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || "*",
+  origin: "http://localhost:8080",
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));

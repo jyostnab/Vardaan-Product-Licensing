@@ -1,4 +1,3 @@
-
 # Vardaan Product Licensing System
 
 A comprehensive licensing system with support for various licensing models.
@@ -68,3 +67,11 @@ The frontend will run on http://localhost:5173 by default.
 - **MAC-based**: Restricted to specific device MAC addresses
 - **Country-based**: Restricted to specific countries
 - **Mixed**: Combination of multiple restriction types
+
+
+env:PORT=3001; node server.js
+$env:PORT=3001; node server.js
+
+netstat -ano | findstr :8080
+taskkill /PID XXXX /F
+ netstat -ano | findstr "3001 8080 8081 3002"

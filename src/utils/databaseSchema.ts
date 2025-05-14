@@ -1,4 +1,3 @@
-
 /**
  * Database Schema Guide for License Management System
  * 

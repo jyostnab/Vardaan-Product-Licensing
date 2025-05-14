@@ -1,4 +1,3 @@
-
 import type { Customer, License, Product, ProductVersion, LicenseVerificationResult } from "@/types/license";
 
 // API base URL
@@ -165,6 +164,40 @@ export const fetchCustomers = async (): Promise<Customer[]> => {
   }
 };
 
+export const fetchCustomersByProductAndVersion = async (productId: string, versionStr: string) => {
+  try {
+    console.log(`Fetching customers for product ID: ${productId}, version: ${versionStr}`);
+    
+    // Get product name for the query
+    const product = await apiRequest(`products/${productId}`);
+    if (!product) {
+      console.error(`Product not found with ID: ${productId}`);
+      return [];
+    }
+
+    // Use the apiRequest helper function to get customers with valid licenses
+    const data = await apiRequest(`licenses/customers-by-product`, 'POST', {
+      productName: product.name,
+      version: versionStr
+    });
+    
+    console.log('API Response:', data);
+    
+    if (!data) {
+      console.error('No data returned from API');
+      return [];
+    }
+    
+    // If the response is a single customer object, convert it to an array
+    const customers = Array.isArray(data) ? data : [data];
+    
+    return customers;
+  } catch (error) {
+    console.error("Failed to fetch customers by product and version:", error);
+    return [];
+  }
+};
+
 export const createCustomer = async (customer: Omit<Customer, "id" | "createdAt" | "updatedAt">): Promise<Customer> => {
   try {
     const data = await apiRequest('customers', 'POST', customer);
@@ -207,7 +240,25 @@ export const fetchLicenses = async (): Promise<License[]> => {
 
 export const createLicense = async (license: Omit<License, "id" | "createdAt" | "updatedAt">): Promise<License> => {
   try {
-    const data = await apiRequest('licenses', 'POST', license);
+    // Transform camelCase to snake_case for backend
+    const licenseData = {
+      customer_id: license.customerId,
+      product_id: license.productId,
+      product_version_id: license.productVersionId,
+      license_type: license.licenseType,
+      license_scope: license.licenseScope,
+      licensing_period: license.licensingPeriod,
+      renewable_alert_message: license.renewableAlertMessage,
+      grace_period_days: license.gracePeriodDays,
+      expiry_date: license.expiryDate ? license.expiryDate.toISOString() : undefined,
+      max_users_allowed: license.maxUsersAllowed,
+      current_users: license.currentUsers || 0,
+      mac_addresses: license.macAddresses,
+      allowed_countries: license.allowedCountries
+    };
+    
+    console.log("Transformed license data for API:", licenseData);
+    const data = await apiRequest('licenses', 'POST', licenseData);
     return data;
   } catch (error) {
     console.error("Error creating license:", error);
@@ -372,4 +423,54 @@ export const logout = () => {
 export const getCurrentUser = async () => {
   const mockUser = localStorage.getItem("currentUser");
   return mockUser ? JSON.parse(mockUser) : null;
+};
+
+// Add helper function to initialize test data for GRC product
+export const initializeGRCVersions = async (grcProductId: string): Promise<ProductVersion[]> => {
+  try {
+    console.log(`Initializing test versions for GRC product ${grcProductId}`);
+    
+    // Check if versions already exist for GRC
+    const existingVersions = await fetchProductVersionsByProductId(grcProductId);
+    
+    if (existingVersions.length > 0) {
+      console.log(`GRC product already has ${existingVersions.length} versions`);
+      return existingVersions;
+    }
+    
+    // Create sample versions for GRC
+    const versions = [
+      {
+        productId: grcProductId,
+        version: "1.0.0",
+        releaseDate: new Date(),
+        notes: "Initial release"
+      },
+      {
+        productId: grcProductId,
+        version: "1.5.0",
+        releaseDate: new Date(),
+        notes: "Feature update"
+      },
+      {
+        productId: grcProductId,
+        version: "2.0.0",
+        releaseDate: new Date(),
+        notes: "Major release"
+      }
+    ];
+    
+    // Create each version
+    const createdVersions = [];
+    for (const version of versions) {
+      const createdVersion = await createProductVersion(version);
+      createdVersions.push(createdVersion);
+    }
+    
+    console.log(`Created ${createdVersions.length} versions for GRC product`);
+    return createdVersions;
+  } catch (error) {
+    console.error("Error initializing GRC versions:", error);
+    throw error;
+  }
 };

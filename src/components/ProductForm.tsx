@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +26,7 @@ import {
 import { Plus, Edit } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { Product } from "@/types/license";
+import { calculateDaysBetween, getMinDateString } from "@/utils/validation";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -87,10 +87,29 @@ export function ProductForm({ product, onSuccess }: { product?: Product, onSucce
       setOpen(false);
       if (onSuccess) onSuccess();
     } catch (error) {
+      let errorMessage = "Failed to save product";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Extract nested API error if present
+        if (error.message.includes("API request failed")) {
+          try {
+            const jsonMatch = error.message.match(/\{.*\}/);
+            if (jsonMatch) {
+              const errorJson = JSON.parse(jsonMatch[0]);
+              errorMessage = errorJson.message || errorMessage;
+            }
+          } catch {
+            // Fallback to the original error message
+          }
+        }
+      }
+      
       console.error("Error saving product:", error);
       toast({
-        title: `Error ${isEditing ? 'updating' : 'adding'} product`,
-        description: `Failed to ${isEditing ? 'update' : 'add'} the product. Please try again.`,
+        title: "Error",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -147,6 +166,40 @@ export function ProductForm({ product, onSuccess }: { product?: Product, onSucce
                       {...field} 
                       placeholder="Comprehensive enterprise solution for business management"
                       rows={4}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="expiryDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Expiry Date</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="date" 
+                      value={field.value || ""}
+                      min={getMinDateString()}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        
+                        // Auto-calculate licensing period when expiry date changes
+                        if (e.target.value) {
+                          const today = new Date();
+                          const expiryDate = new Date(e.target.value);
+                          const periodInDays = calculateDaysBetween(today, expiryDate);
+                          form.setValue("licensingPeriod", periodInDays);
+                          
+                          // Log for debugging
+                          console.log(`Auto-calculated licensing period: ${periodInDays} days based on expiry date ${e.target.value}`);
+                        }
+                      }}
+                      onBlur={field.onBlur}
+                      ref={field.ref} 
                     />
                   </FormControl>
                   <FormMessage />
