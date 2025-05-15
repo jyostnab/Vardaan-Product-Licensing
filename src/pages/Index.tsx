@@ -7,6 +7,7 @@ import { CreateLicenseForm } from "@/components/CreateLicenseForm";
 import { DatabaseSchemaGuide } from "@/components/DatabaseSchemaGuide";
 import { DatabaseConnectionCheck } from "@/components/DatabaseConnectionCheck";
 import { AICADEMYSimulator } from "@/components/AICADEMYSimulator";
+import LicenseVerificationTab from "@/components/LicenseVerificationTab";
 import { Shield, Terminal, Package, FileText, Database, LayoutDashboard, Rocket } from "lucide-react";
 
 const Index = () => {
@@ -30,7 +31,7 @@ const Index = () => {
         <DatabaseConnectionCheck />
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-8 rounded-xl overflow-hidden shadow-sm">
+          <TabsList className="grid w-full grid-cols-4 mb-8 rounded-xl overflow-hidden shadow-sm">
             <TabsTrigger value="dashboard" className="text-base py-3 data-[state=active]:shadow-md">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
@@ -43,17 +44,9 @@ const Index = () => {
               <FileText className="h-4 w-4 mr-2" />
               Create License
             </TabsTrigger>
-            <TabsTrigger value="demo" className="text-base py-3 data-[state=active]:shadow-md">
-              <Terminal className="h-4 w-4 mr-2" />
-              Login Demo
-            </TabsTrigger>
-            <TabsTrigger value="simulator" className="text-base py-3 data-[state=active]:shadow-md">
-              <Rocket className="h-4 w-4 mr-2" />
-              AICADEMY
-            </TabsTrigger>
-            <TabsTrigger value="database" className="text-base py-3 data-[state=active]:shadow-md">
-              <Database className="h-4 w-4 mr-2" />
-              Database
+            <TabsTrigger value="verify" className="text-base py-3 data-[state=active]:shadow-md">
+              <Shield className="h-4 w-4 mr-2" />
+              Verify License
             </TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard">
@@ -65,14 +58,8 @@ const Index = () => {
           <TabsContent value="create">
             <CreateLicenseForm />
           </TabsContent>
-          <TabsContent value="demo">
-            <LicenseLoginDemo />
-          </TabsContent>
-          <TabsContent value="simulator">
-            <AICADEMYSimulator />
-          </TabsContent>
-          <TabsContent value="database">
-            <DatabaseSchemaGuide />
+          <TabsContent value="verify">
+            <LicenseVerificationTab />
           </TabsContent>
         </Tabs>
       </main>
@@ -102,10 +89,9 @@ const Index = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Contact</h3>
               <ul className="space-y-2 text-sm text-slate-300">
-                <li>support@licenseguardian.com</li>
-                <li>+1 (555) 123-4567</li>
-                <li>123 Software Plaza, Suite 456</li>
-                <li>San Francisco, CA 94105</li>
+                <li>Vardaan Data Sciences Pvt. Ltd.</li>
+                <li>Aurum, Plot no 57, Jayabheri Enclave, Gachibowli, Hyderabad, Telangana 500032</li>
+                <li>support@vardaanglobal.com</li>
               </ul>
             </div>
           </div>

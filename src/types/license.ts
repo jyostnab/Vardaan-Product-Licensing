@@ -1,4 +1,3 @@
-
 export type LicenseType = 'date_based' | 'user_count_based' | 'mac_based' | 'country_based' | 'mixed';
 
 export type LicenseScope = 'international' | 'local';
@@ -72,6 +71,7 @@ export type LicenseVerificationResult = {
   errorMessage?: string;
   expiresIn?: number; // Days until expiry
   status: 'valid' | 'warning' | 'expired';
+  licenseNotFound?: boolean; // Added to indicate when no license is found for the combination
 };
 
 export interface LicenseVerificationLog {

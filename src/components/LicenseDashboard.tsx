@@ -6,11 +6,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, RefreshCw, Filter, User, Package } from "lucide-react";
+import { 
+  Search, Plus, RefreshCw, Filter, User, Package, Calendar, Clock, AlertTriangle, 
+  CheckCircle2, Globe, PcCase, UserCheck, Layers, Tag
+} from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomerLicenseView } from "./CustomerLicenseView";
 import { ProductLicenseView } from "./ProductLicenseView";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+  PieChart, Pie, Cell, LineChart, Line 
+} from "recharts";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -227,6 +244,300 @@ export function LicenseDashboard() {
     );
   };
 
+  // Calculate license statistics
+  const licenseStats = useMemo(() => {
+    if (isLoading || !licenses.length) return null;
+
+    // By license type
+    const byType = {};
+    licenses.forEach(license => {
+      const type = license.licenseType;
+      byType[type] = (byType[type] || 0) + 1;
+    });
+    
+    // By expiry status
+    const today = new Date();
+    const expired = licenses.filter(l => l.expiryDate && new Date(l.expiryDate) < today).length;
+    const expiringIn30Days = licenses.filter(l => {
+      if (!l.expiryDate) return false;
+      const expiry = new Date(l.expiryDate);
+      const days = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return days >= 0 && days <= 30;
+    }).length;
+    const valid = licenses.filter(l => !l.expiryDate || new Date(l.expiryDate) >= today).length;
+    
+    // By customer
+    const customerCounts = {};
+    licenses.forEach(license => {
+      const customer = license.customer?.name || "Unknown";
+      customerCounts[customer] = (customerCounts[customer] || 0) + 1;
+    });
+    
+    // By product
+    const productCounts = {};
+    licenses.forEach(license => {
+      const product = products.find(p => p.id === license.productId)?.name || "Unknown";
+      productCounts[product] = (productCounts[product] || 0) + 1;
+    });
+    
+    // Create chart data
+    const typeData = Object.entries(byType).map(([name, value]) => ({
+      name: name.replace('_', ' ').replace('based', '').trim(),
+      value
+    }));
+    
+    const statusData = [
+      { name: 'Valid', value: valid - expiringIn30Days, color: '#22c55e' },
+      { name: 'Expiring Soon', value: expiringIn30Days, color: '#f59e0b' },
+      { name: 'Expired', value: expired, color: '#ef4444' }
+    ];
+
+    // Top customers data (top 5)
+    const topCustomersData = Object.entries(customerCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, licenses: count }));
+      
+    // Top products data (top 5)
+    const topProductsData = Object.entries(productCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, licenses: count }));
+      
+    return {
+      typeData,
+      statusData,
+      topCustomersData,
+      topProductsData,
+      totalLicenses: licenses.length,
+      totalActiveUsers: licenses.reduce((sum, license) => sum + (license.currentUsers || 0), 0),
+      totalCustomers: Object.keys(customerCounts).length,
+      totalProducts: Object.keys(productCounts).length,
+      expiringIn30Days,
+      expired
+    };
+  }, [licenses, products, isLoading]);
+  
+  const renderLicenseStats = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-6 mb-8">
+          <Skeleton className="h-[300px] w-full" />
+          <Skeleton className="h-[100px] w-full" />
+        </div>
+      );
+    }
+    
+    if (!licenseStats) return null;
+    
+    // Color scheme for pie charts
+    const COLORS = ['#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f97316'];
+    
+    return (
+      <div className="space-y-6 mb-8 animate-fade-in">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Licenses</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{licenseStats.totalLicenses}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              <User className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{licenseStats.totalActiveUsers}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+              <Clock className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{licenseStats.expiringIn30Days}</div>
+              <p className="text-xs text-muted-foreground">Within 30 days</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Expired</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{licenseStats.expired}</div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Licenses by Type</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={licenseStats.typeData} 
+                  margin={{ left: 20, right: 20, top: 20, bottom: 50 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    label={{ 
+                      value: 'License Type', 
+                      position: 'insideBottom', 
+                      offset: -10 
+                    }}
+                    tick={{fontSize: 12}}
+                  />
+                  <YAxis 
+                    label={{ 
+                      value: 'Number of Licenses', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle' }
+                    }}
+                    tickCount={6}
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    formatter={(value) => [`${value} licenses`, 'Count']}
+                    labelFormatter={(label) => `Type: ${label}`}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    name="Licenses" 
+                    fill="#3b82f6" 
+                    radius={[4, 4, 0, 0]}
+                    label={{ 
+                      position: 'top', 
+                      formatter: (value) => value, 
+                      fill: '#374151',
+                      fontSize: 12
+                    }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Licenses by Status</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] flex justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={licenseStats.statusData}
+                  margin={{ top: 20, right: 30, left: 50, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name"
+                    label={{ 
+                      value: 'License Status', 
+                      position: 'insideBottom', 
+                      offset: -10 
+                    }}
+                  />
+                  <YAxis 
+                    label={{ 
+                      value: 'Number of Licenses', 
+                      angle: -90, 
+                      position: 'insideLeft' 
+                    }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip formatter={(value) => [`${value} licenses`, 'Count']} />
+                  <Bar 
+                    dataKey="value" 
+                    name="Licenses" 
+                    label={{ 
+                      position: 'top', 
+                      formatter: (value) => value, 
+                      fill: '#374151',
+                      fontSize: 12
+                    }}
+                  >
+                    {licenseStats.statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Data Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Customers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Licenses</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {licenseStats.topCustomersData.map((item) => (
+                    <TableRow key={item.name}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="outline">{item.licenses}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Products</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Licenses</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {licenseStats.topProductsData.map((item) => (
+                    <TableRow key={item.name}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="outline">{item.licenses}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -341,12 +652,14 @@ export function LicenseDashboard() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <TabsList className="rounded-lg shadow-sm">
               <TabsTrigger value="all" className="relative data-[state=active]:shadow-sm">
+                <Layers className="h-4 w-4 mr-2" />
                 All
                 <Badge variant="outline" className="ml-2 bg-background">
                   {licenses.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="date_based">
+                <Calendar className="h-4 w-4 mr-2" />
                 Date Based
                 <Badge variant="outline" className="ml-2 bg-background">
                   {licenses.filter(l => 
@@ -356,6 +669,7 @@ export function LicenseDashboard() {
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="user_count_based">
+                <UserCheck className="h-4 w-4 mr-2" />
                 User Count
                 <Badge variant="outline" className="ml-2 bg-background">
                   {licenses.filter(l => 
@@ -365,6 +679,7 @@ export function LicenseDashboard() {
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="mac_based">
+                <PcCase className="h-4 w-4 mr-2" />
                 MAC Based
                 <Badge variant="outline" className="ml-2 bg-background">
                   {licenses.filter(l => 
@@ -374,6 +689,7 @@ export function LicenseDashboard() {
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="country_based">
+                <Globe className="h-4 w-4 mr-2" />
                 Country Based
                 <Badge variant="outline" className="ml-2 bg-background">
                   {licenses.filter(l => 
@@ -383,6 +699,7 @@ export function LicenseDashboard() {
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="mixed">
+                <Tag className="h-4 w-4 mr-2" />
                 Mixed
                 <Badge variant="outline" className="ml-2 bg-background">
                   {licenses.filter(l => l.licenseType === 'mixed').length}
@@ -435,6 +752,7 @@ export function LicenseDashboard() {
           </div>
 
           <TabsContent value={activeTab} className="mt-0 animate-fade-in">
+            {activeTab === "all" && renderLicenseStats()}
             {renderLicenseGrid()}
           </TabsContent>
         </Tabs>

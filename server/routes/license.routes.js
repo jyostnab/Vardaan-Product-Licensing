@@ -1,8 +1,11 @@
 const db = require("../models");
+const express = require('express');
+const router = express.Router();
+const { spawn } = require('child_process');
+const path = require('path');
 
 module.exports = app => {
   const licenses = require("../controllers/license.controller.js");
-  const router = require("express").Router();
 
   // Create a new License
   router.post("/", licenses.create);
@@ -82,6 +85,104 @@ module.exports = app => {
     } catch (err) {
       console.error("Error in /customers-by-product:", err);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // License verification API endpoint
+  router.post('/verify', async (req, res) => {
+    try {
+      const { licenseKey } = req.body;
+      
+      if (!licenseKey) {
+        return res.status(400).json({
+          valid: false,
+          message: "License key is required",
+          details: { error: "Missing license key" }
+        });
+      }
+
+      // Two implementation options:
+      
+      // Option 1: Call Python script (recommended for complex verification)
+      const result = await callPythonVerifier(licenseKey);
+      return res.json(result);
+      
+      // Option 2: Use built-in JS verification (simpler but less powerful)
+      // const result = verifyLicenseJS(licenseKey);
+      // return res.json(result);
+      
+    } catch (error) {
+      console.error("License verification error:", error);
+      return res.status(500).json({
+        valid: false,
+        message: "Internal server error during license verification",
+        details: { error: error.message }
+      });
+    }
+  });
+
+  // Call Python script for verification
+  async function callPythonVerifier(licenseKey, addUser = false) {
+    return new Promise((resolve, reject) => {
+      const pythonScript = path.join(__dirname, '..', 'scripts', 'verify_license.py');
+      const pythonProcess = spawn('python', [pythonScript, licenseKey, addUser ? 'add-user' : 'verify']);
+      
+      let resultData = '';
+      let errorData = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        resultData += data.toString();
+      });
+      
+      pythonProcess.stderr.on('data', (data) => {
+        errorData += data.toString();
+      });
+      
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error(`Python process exited with code ${code}`);
+          console.error(`Error: ${errorData}`);
+          return reject(new Error(`Verification script failed with code ${code}`));
+        }
+        
+        try {
+          const result = JSON.parse(resultData);
+          resolve(result);
+        } catch (err) {
+          reject(new Error(`Failed to parse verification result: ${err.message}`));
+        }
+      });
+    });
+  }
+
+  // Add endpoint to add a user (increment user count)
+  router.post('/add-user', async (req, res) => {
+    try {
+      const { licenseKey } = req.body;
+      
+      if (!licenseKey) {
+        return res.status(400).json({
+          success: false,
+          message: "License key is required"
+        });
+      }
+      
+      // Call Python script with add-user flag
+      const result = await callPythonVerifier(licenseKey, true);
+      
+      return res.json({
+        success: result.valid,
+        message: result.message,
+        details: result.details
+      });
+      
+    } catch (error) {
+      console.error("Add user error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error while adding user",
+        error: error.message
+      });
     }
   });
 
