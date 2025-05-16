@@ -26,7 +26,6 @@ import {
 import { Plus, Edit } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { Product } from "@/types/license";
-import { calculateDaysBetween, getMinDateString } from "@/utils/validation";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -34,7 +33,7 @@ const productSchema = z.object({
 });
 
 export function ProductForm({ product, onSuccess }: { product?: Product, onSuccess?: () => void }) {
-  const { addProduct, updateProduct } = useData();
+  const { addProduct, updateProduct, addProductVersion } = useData();
   const [open, setOpen] = useState(false);
   
   const isEditing = !!product;
@@ -72,14 +71,22 @@ export function ProductForm({ product, onSuccess }: { product?: Product, onSucce
         });
       } else {
         // Add new product
-        await addProduct({
+        const newProduct = await addProduct({
           name: data.name,
           description: data.description
         });
         
+        // Add default version 1.0.0
+        await addProductVersion({
+          productId: newProduct.id,
+          version: "1.0.0",
+          releaseDate: new Date(),
+          notes: "First version with basic features"
+        });
+        
         toast({
           title: "Product added",
-          description: `${data.name} has been added successfully.`
+          description: `${data.name} has been added successfully with version 1.0.0.`
         });
       }
       
@@ -166,40 +173,6 @@ export function ProductForm({ product, onSuccess }: { product?: Product, onSucce
                       {...field} 
                       placeholder="Comprehensive enterprise solution for business management"
                       rows={4}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="expiryDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Expiry Date</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="date" 
-                      value={field.value || ""}
-                      min={getMinDateString()}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        
-                        // Auto-calculate licensing period when expiry date changes
-                        if (e.target.value) {
-                          const today = new Date();
-                          const expiryDate = new Date(e.target.value);
-                          const periodInDays = calculateDaysBetween(today, expiryDate);
-                          form.setValue("licensingPeriod", periodInDays);
-                          
-                          // Log for debugging
-                          console.log(`Auto-calculated licensing period: ${periodInDays} days based on expiry date ${e.target.value}`);
-                        }
-                      }}
-                      onBlur={field.onBlur}
-                      ref={field.ref} 
                     />
                   </FormControl>
                   <FormMessage />
